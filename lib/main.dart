@@ -212,11 +212,9 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final s = context.read<AppState>().settings;
-      // 内嵌和风天气凭据，city为空时不拉取但常驻效果仍有效
-      // betaWeather=false 时关闭粒子叠加层；city有值时始终尝试获取实时天气
       WeatherService.start(
         s.weatherApiKey,
-        s.weatherCity.isNotEmpty ? s.weatherCity : '北京',
+        s.weatherCity,
         s.pinnedWeatherEffect,
         jwtSecret: s.weatherJwtSecret,
         jwtKid:    s.weatherJwtKid,

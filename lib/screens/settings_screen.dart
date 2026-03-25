@@ -2931,14 +2931,14 @@ class _WeatherConfigCardState extends State<_WeatherConfigCard> {
   void initState() {
     super.initState();
     final s = widget.state.settings;
-    _keyCtrl  = TextEditingController(text: s.weatherApiKey);
+    _keyCtrl  = TextEditingController(text: '');
     _cityCtrl = TextEditingController(text: s.weatherCity);
-    _jwtCtrl  = TextEditingController(text: s.weatherJwtSecret);
-    _kidCtrl  = TextEditingController(text: s.weatherJwtKid);
-    _subCtrl  = TextEditingController(text: s.weatherJwtSub);
-    _hostCtrl = TextEditingController(text: s.weatherApiHost);
+    _jwtCtrl  = TextEditingController(text: '');
+    _kidCtrl  = TextEditingController(text: '');
+    _subCtrl  = TextEditingController(text: '');
+    _hostCtrl = TextEditingController(text: '');
     // 如果用户未填私钥，默认选 JWT 模式（内嵌凭据）
-    _useJwt   = s.weatherJwtSecret.isNotEmpty || s.weatherApiKey.isEmpty;
+    _useJwt   = true;
   }
 
   @override
