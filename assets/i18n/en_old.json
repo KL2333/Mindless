@@ -1,0 +1,101 @@
+{
+  "screens": {
+    "today": {
+      "title": "Today",
+      "addHint": "Add a task…",
+      "addTomorrow": "Plan for tomorrow…",
+      "noTasks": "No tasks today",
+      "todayFocus": "Today's focus",
+      "unassigned": "Inbox",
+      "overdue": "Overdue"
+    },
+    "quadrant": {
+      "title": "Matrix"
+    },
+    "stats": {
+      "title": "Stats",
+      "vitalityTitle": "Vitality by slot",
+      "deviationTitle": "Plan vs Actual",
+      "deviationDesc": "Avg. deviation: planned slot vs actual",
+      "countLabel": "Count",
+      "timeLabel": "Time",
+      "rankLabel": "By rank",
+      "alphaLabel": "A-Z"
+    },
+    "pomodoro": {
+      "title": "Focus",
+      "shortBreak": "Short break",
+      "longBreak": "Long break",
+      "cycle": "Round ",
+      "cycleUnit": "",
+      "bindTask": "Link task",
+      "autoNext": "Auto-start next",
+      "noTask": "No task",
+      "skip": "Skip",
+      "pause": "Pause",
+      "resume": "Resume",
+      "start": "Start",
+      "reset": "Reset",
+      "nextPhase": "Next: ",
+      "currentPhase": "Now: ",
+      "focus": "Focus"
+    },
+    "settings": {
+      "title": "Settings",
+      "appearance": "Appearance",
+      "language": "Language / 语言",
+      "clockStyle": "Clock style",
+      "defaultView": "Default stats view",
+      "colorThresh": "Heat thresholds",
+      "pomSettings": "Pomodoro",
+      "semSettings": "Semester",
+      "tagFilter": "Tag filter",
+      "tagMgmt": "Tags",
+      "dataOverview": "Data",
+      "about": "About",
+      "showPomodoro": "Show pomodoro tab",
+      "dynamicColor": "Dynamic color (Android 12+)",
+      "installDate": "First use",
+      "total": "Total tasks",
+      "completed": "Completed",
+      "rate": "Completion rate",
+      "appNameLbl": "App name",
+      "disposable": "Disposable time",
+      "longPresEdit": "Long-press to edit"
+    },
+    "search": {
+      "title": "Search"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "ignore": "Ignore",
+    "dayToday": "Today",
+    "dayTomorrow": "Tomorrow"
+  },
+  "time": {
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "focus": "Focus"
+  },
+  "blocks": {
+    "morning": {
+      "name": "Morning",
+      "emoji": "🌅",
+      "color": 4285476906
+    },
+    "afternoon": {
+      "name": "Afternoon",
+      "emoji": "☀️",
+      "color": 3869860544
+    },
+    "evening": {
+      "name": "Evening",
+      "emoji": "🌙",
+      "color": 4030806328
+    }
+  }
+}

@@ -1,0 +1,37 @@
+name: liushuizhang
+description: 流水账 - 任务管理与专注工具
+version: 1.0.0+88
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  intl: ^0.19.0
+  flutter_slidable: ^3.1.0
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  dynamic_color: ^1.7.0
+  path_provider: ^2.1.0
+  screen_brightness: ^0.2.2+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/about_icon.png
+    - assets/dragon_boat_bg.jpg
+    - assets/black_hole_bg.jpg
+    - assets/i18n/zh.json
+    - assets/i18n/en.json
+
+  shaders:
+    - shaders/black_hole.frag

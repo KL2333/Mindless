@@ -1,0 +1,29 @@
+# analysis_options.yaml
+analyzer:
+  strong-mode:
+    implicit-casts: false
+    implicit-dynamic: false
+  errors:
+    missing_required_param: error
+    missing_return: error
+    todo: ignore
+    exhaustive_cases: error # 开启 switch 穷尽性检查
+
+linter:
+  rules:
+    - exhaustive_cases
+    - null_closures
+    - prefer_const_constructors
+    - prefer_final_fields
+    - prefer_is_empty
+    - prefer_is_not_empty
+    - slash_for_doc_comments
+    - type_init_formals
+    - unnecessary_const
+    - unnecessary_new
+    - unnecessary_null_aware_assignments
+    - unnecessary_null_in_if_null_operators
+    - unnecessary_overrides
+    - unnecessary_parenthesis
+    - unnecessary_this
+    - valid_regexps

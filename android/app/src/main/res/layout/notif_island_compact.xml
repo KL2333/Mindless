@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 胶囊形态（状态栏收起状态） -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+    <!-- 左侧图标 -->
+    <ImageView
+        android:id="@+id/island_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@mipmap/ic_launcher"
+        android:contentDescription="专注" />
+
+    <Space android:layout_width="8dp" android:layout_height="1dp" />
+
+    <!-- 阶段文字（专注/休息） -->
+    <TextView
+        android:id="@+id/island_phase"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🍅 专注"
+        android:textSize="12sp"
+        android:textColor="#FFFFFFFF"
+        android:fontFamily="sans-serif-medium" />
+
+    <Space android:layout_width="6dp" android:layout_height="1dp" />
+
+    <!-- 倒计时（核心，每秒刷新） -->
+    <TextView
+        android:id="@+id/island_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="25:00"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFC080"
+        android:fontFamily="monospace" />
+
+</LinearLayout>

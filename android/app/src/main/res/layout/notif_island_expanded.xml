@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 展开卡片形态（下拉通知栏 / 长按胶囊） -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#CC1A1A1A">
+
+    <!-- 顶行：阶段 + 大倒计时 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/expand_phase"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🍅 专注"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFFFF" />
+
+        <TextView
+            android:id="@+id/expand_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="25:00"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFC080"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- 任务名称 -->
+    <TextView
+        android:id="@+id/expand_task"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="📌 暂无绑定任务"
+        android:textSize="12sp"
+        android:textColor="#FFBBBBBB"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <!-- 轮次 + 进度条 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/expand_cycle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="第 1 轮"
+            android:textSize="11sp"
+            android:textColor="#FF999999" />
+
+        <ProgressBar
+            android:id="@+id/expand_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#FFFFC080"
+            android:progressBackgroundTint="#44FFFFFF" />
+    </LinearLayout>
+
+    <!-- 操作按钮行 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:gravity="end">
+
+        <TextView
+            android:id="@+id/btn_pause_resume"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="暂停"
+            android:textSize="12sp"
+            android:textColor="#FFFFC080"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="#33FFC080" />
+
+        <Space android:layout_width="10dp" android:layout_height="1dp" />
+
+        <TextView
+            android:id="@+id/btn_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="结束"
+            android:textSize="12sp"
+            android:textColor="#FFFF8080"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="#33FF8080" />
+    </LinearLayout>
+
+</LinearLayout>

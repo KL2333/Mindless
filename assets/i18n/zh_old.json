@@ -1,0 +1,101 @@
+{
+  "screens": {
+    "today": {
+      "title": "今日",
+      "addHint": "记录一件事…",
+      "addTomorrow": "计划明日一件事…",
+      "noTasks": "今日暂无待办",
+      "todayFocus": "今日专注",
+      "unassigned": "待分配",
+      "overdue": "逾期"
+    },
+    "quadrant": {
+      "title": "四象限"
+    },
+    "stats": {
+      "title": "统计",
+      "vitalityTitle": "时段活力分析",
+      "deviationTitle": "预估偏差曲线",
+      "deviationDesc": "规划时段 vs 实际完成时段的平均偏差",
+      "countLabel": "数量",
+      "timeLabel": "时间",
+      "rankLabel": "按名次",
+      "alphaLabel": "A-Z"
+    },
+    "pomodoro": {
+      "title": "番茄钟",
+      "shortBreak": "短休息",
+      "longBreak": "长休息",
+      "cycle": "第",
+      "cycleUnit": "轮",
+      "bindTask": "绑定任务",
+      "autoNext": "自动下一循环",
+      "noTask": "不绑定任务",
+      "skip": "跳过",
+      "pause": "暂停",
+      "resume": "继续",
+      "start": "开始",
+      "reset": "重置",
+      "nextPhase": "下一阶段：",
+      "currentPhase": "当前：",
+      "focus": "专注"
+    },
+    "settings": {
+      "title": "设置",
+      "appearance": "外观",
+      "language": "语言 / Language",
+      "clockStyle": "时间样式",
+      "defaultView": "统计默认视图",
+      "colorThresh": "日历配色阈值",
+      "pomSettings": "番茄钟",
+      "semSettings": "学期设置",
+      "tagFilter": "标签统计过滤",
+      "tagMgmt": "标签管理",
+      "dataOverview": "数据概览",
+      "about": "关于",
+      "showPomodoro": "显示番茄钟标签页",
+      "dynamicColor": "动态取色 (Android 12+)",
+      "installDate": "首次使用",
+      "total": "任务总数",
+      "completed": "已完成",
+      "rate": "完成率",
+      "appNameLbl": "应用名称",
+      "disposable": "可支配时间",
+      "longPresEdit": "长按修改可支配时间"
+    },
+    "search": {
+      "title": "搜索"
+    }
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "ignore": "忽略",
+    "dayToday": "今日",
+    "dayTomorrow": "明日"
+  },
+  "time": {
+    "morning": "上午",
+    "afternoon": "下午",
+    "evening": "晚上",
+    "focus": "专注"
+  },
+  "blocks": {
+    "morning": {
+      "name": "上午",
+      "emoji": "🌅",
+      "color": 4285476906
+    },
+    "afternoon": {
+      "name": "下午",
+      "emoji": "☀️",
+      "color": 3869860544
+    },
+    "evening": {
+      "name": "晚上",
+      "emoji": "🌙",
+      "color": 4030806328
+    }
+  }
+}

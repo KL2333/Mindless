@@ -1,0 +1,94 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom
+.buildlog
+.history
+.svn
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The Python 3.x cache
+__pycache__/
+
+# Flutter/Dart related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android related
+**/android/**/generated/
+**/android/app/src/main/res/generated/
+**/android/local.properties
+**/android/Flutter/Generated.xcconfig
+**/android/Flutter/flutter_export_environment.sh
+**/android/Flutter/flutter_messenger_proxy.sh
+**/android/app/google-services.json
+.gradle/
+captures/
+assets/android_release.keystore
+assets/key.properties
+
+# iOS/macOS related
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.lsbom
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.xcworkspace/
+**/ios/**/xcuserdata/
+**/ios/**/config.env
+**/ios/**/DerivedData
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets.zip
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.[mh]
+**/ios/Runner/Info.plist
+**/ios/spec
+**/ios/DerivedData
+**/ios/.generated/
+*.moe_session
+*.moe_gradl_project
+.xcode-history
+
+# VS Code related
+.vscode/
+
+# Sensitive Configs
+.env
+*.jks
+*.keystore
+key.properties
+google-services.json
+GoogleService-Info.plist
