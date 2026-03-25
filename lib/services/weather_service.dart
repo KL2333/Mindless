@@ -152,13 +152,13 @@ class WeatherService {
   // ── 内嵌和风天气凭据（Builtin QWeather credentials）─────────────────────
   // ⚠️  私钥内嵌于 APK，仅供个人使用，请勿公开发布
   // 用户在设置中填写自己的凭据后，将优先使用用户的凭据
-  static const _kBuiltinApiHost  = 'ky5hv6e82q.re.qweatherapi.com';
-  static const _kBuiltinSub      = '452HMYEJTW';  // 项目 ID
-  static const _kBuiltinKid      = 'TE5AYPKCUG';  // 凭据 ID
-  static const _kBuiltinSecret   =
-      '-----BEGIN PRIVATE KEY-----\n'
-      'MC4CAQAwBQYDK2VwBCIEIFmBf8RwRbImQ/dAqF2iX3cAHg5Ps+38CvjiOTlZw0PZ\n'
-      '-----END PRIVATE KEY-----';
+  // ── GitHub Open Source Version: No built-in credentials ───────────────────
+  // Users must provide their own credentials in Settings > Lab > Weather.
+  static const _kBuiltinApiHost  = '';
+  static const _kBuiltinSub      = '';  // Project ID
+  static const _kBuiltinKid      = '';  // Credential ID
+  static const _kBuiltinSecret   = '';  // Ed25519 Private Key PEM
+  // ──────────────────────────────────────────────────────────────────────────
 
   static WeatherData? _cached;
   static Timer? _timer;
@@ -182,7 +182,8 @@ class WeatherService {
       _jwtKid.isNotEmpty    ? _jwtKid    : _kBuiltinKid;
   static String get _effectiveSub      =>
       _jwtSub.isNotEmpty    ? _jwtSub    : _kBuiltinSub;
-  static bool   get _hasCredentials    => true; // 内嵌凭据永远有效
+  static bool   get _hasCredentials    =>
+      _effectiveSecret.isNotEmpty || _apiKey.isNotEmpty;
 
   static WeatherType get effectiveType {
     if (_pinned != WeatherType.none) return _pinned;

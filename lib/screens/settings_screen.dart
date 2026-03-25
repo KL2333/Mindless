@@ -3301,13 +3301,13 @@ class _AboutScreen extends StatelessWidget {
             color: Color(tc.tx), fontFamily: 'serif')),
           const SizedBox(height: 6),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text('β.0.085', style: TextStyle(fontSize: 13, color: Color(tc.ts))),
+            Text('γ', style: TextStyle(fontSize: 13, color: Color(tc.ts))),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: Color(tc.acc).withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-              child: Text('β', style: TextStyle(fontSize: 11, color: Color(tc.acc), fontWeight: FontWeight.w800))),
+              child: Text('γ', style: TextStyle(fontSize: 11, color: Color(tc.acc), fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 4),
           Text(L.get('screens.about.subtitle'), style: TextStyle(fontSize: 12, color: Color(tc.tm))),
