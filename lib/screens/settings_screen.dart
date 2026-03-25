@@ -3060,11 +3060,8 @@ class _WeatherConfigCardState extends State<_WeatherConfigCard> {
               const Text('✅', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(L.get('screens.settings.weather.embeddedCreds'),
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: acc)),
-                Text(L.get('screens.settings.weather.embeddedCredsHint'),
-                    style: TextStyle(fontSize: 9.5, color: Color(tc.ts), height: 1.35),
-                    maxLines: 2),
+                Text('请自行申请和风天气凭据并填入下方', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: acc)),
+                Text('应用本身不再提供任何内嵌凭据', style: TextStyle(fontSize: 9.5, color: Color(tc.ts), height: 1.35), maxLines: 2),
               ])),
             ]),
           ),
