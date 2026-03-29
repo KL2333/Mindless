@@ -92,3 +92,11 @@ assets/key.properties
 key.properties
 google-services.json
 GoogleService-Info.plist
+
+# External References
+Tomato-1.8.5.zip
+Tomato-1.8.5仅供参考的开源软件源码/
+测试平台而来的崩溃日志/
+报错 3.30.txt
+crash.txt
+build_log.txt
