@@ -757,6 +757,8 @@ class L {
   static String get leftOffset => i18n.get('screens.settings.leftOffset');
   static String get width => i18n.get('screens.settings.width');
   static String get rulerPreviewHint => i18n.get('screens.settings.rulerPreviewHint');
+  static String get persistentVibrate => i18n.get('screens.settings.persistentVibrate');
+  static String get persistentVibrateDesc => i18n.get('screens.settings.persistentVibrateDesc');
   static String pomDisplay(int focus, int breakTime) =>
     i18n.get('screens.settings.pomDisplay', {'focus': focus.toString(), 'break': breakTime.toString()});
   static String get showPomTab => i18n.get('screens.settings.showPomTab');

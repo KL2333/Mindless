@@ -14,13 +14,15 @@ List<Map<String, dynamic>> _qConf() => [
   {'q': 4, 'name': L.quadQ4Name, 'sub': L.quadQ4Sub, 'bg': const Color(0x1A7A5AB8), 'hdr': const Color(0xD97A5AB8)},
 ];
 
-class QuadrantScreen extends StatefulWidget {
-  const QuadrantScreen({super.key});
+class QuadrantView extends StatefulWidget {
+  final double topPadding;
+  final VoidCallback onSwitchBack;
+  const QuadrantView({super.key, required this.topPadding, required this.onSwitchBack});
   @override
-  State<QuadrantScreen> createState() => _QuadrantScreenState();
+  State<QuadrantView> createState() => _QuadrantViewState();
 }
 
-class _QuadrantScreenState extends State<QuadrantScreen> {
+class _QuadrantViewState extends State<QuadrantView> {
   int? _hoveredQuad;
   bool _hoveringPool = false;
   bool _hoveringIgnore = false;
@@ -35,11 +37,6 @@ class _QuadrantScreenState extends State<QuadrantScreen> {
     final state = context.watch<AppState>();
     final tc = state.themeConfig;
     final today = state.todayKey;
-    final topPad = MediaQuery.of(context).padding.top;
-    final showClock = state.settings.showTopClock;
-    final appBarHeight = showClock ? 78.0 : 46.0;
-    final topMargin = 8.0;
-    final barBottom = topPad + appBarHeight + topMargin + 8 + state.settings.topBarOffset; // Precise spacing + Dynamic Offset
 
     // Unassigned: not done, not ignored, no quadrant
     final unassigned = state.tasks
@@ -61,54 +58,14 @@ class _QuadrantScreenState extends State<QuadrantScreen> {
 
     // ── 横屏：左侧待分类 | 右侧2×2四象限 ──────────────────────────────
     if (isLandscape) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // 左列：待分类池
-          SizedBox(width: 160, child: _buildPoolColumn(state, tc, unassigned)),
-          Container(width: 1, color: Color(tc.brd).withOpacity(0.4)),
-          // 右区：2×2四象限
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 12, 12),
-              child: Column(children: [
-                Expanded(child: Row(children: [
-                  Expanded(child: _QuadCell(q: 1, state: state, tc: tc,
-                    hovering: _hoveredQuad == 1,
-                    onHover: (v) => setState(() => _hoveredQuad = v ? 1 : null),
-                    onDrop: (id) => _move(state, id, 1))),
-                  const SizedBox(width: 8),
-                  Expanded(child: _QuadCell(q: 2, state: state, tc: tc,
-                    hovering: _hoveredQuad == 2,
-                    onHover: (v) => setState(() => _hoveredQuad = v ? 2 : null),
-                    onDrop: (id) => _move(state, id, 2))),
-                ])),
-                const SizedBox(height: 8),
-                Expanded(child: Row(children: [
-                  Expanded(child: _QuadCell(q: 3, state: state, tc: tc,
-                    hovering: _hoveredQuad == 3,
-                    onHover: (v) => setState(() => _hoveredQuad = v ? 3 : null),
-                    onDrop: (id) => _move(state, id, 3))),
-                  const SizedBox(width: 8),
-                  Expanded(child: _QuadCell(q: 4, state: state, tc: tc,
-                    hovering: _hoveredQuad == 4,
-                    onHover: (v) => setState(() => _hoveredQuad = v ? 4 : null),
-                    onDrop: (id) => _move(state, id, 4))),
-                ])),
-              ]),
-            )),
-        ]),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(0, barBottom, 0, 100), // Liquid Glass spacing
-        child: Column(children: [
-          _buildPoolRow(state, tc, unassigned),
-          Expanded(child: Padding(
-            padding: const EdgeInsets.all(12),
+      return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // 左列：待分类池
+        SizedBox(width: 160, child: _buildPoolColumn(state, tc, unassigned)),
+        Container(width: 1, color: Color(tc.brd).withOpacity(0.4)),
+        // 右区：2×2四象限
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 12, 12),
             child: Column(children: [
               Expanded(child: Row(children: [
                 Expanded(child: _QuadCell(q: 1, state: state, tc: tc,
@@ -135,8 +92,42 @@ class _QuadrantScreenState extends State<QuadrantScreen> {
               ])),
             ]),
           )),
-        ]),
-      ),
+      ]);
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(0, widget.topPadding, 0, 0),
+      child: Column(children: [
+        _buildPoolRow(state, tc, unassigned),
+        Expanded(child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(children: [
+            Expanded(child: Row(children: [
+              Expanded(child: _QuadCell(q: 1, state: state, tc: tc,
+                hovering: _hoveredQuad == 1,
+                onHover: (v) => setState(() => _hoveredQuad = v ? 1 : null),
+                onDrop: (id) => _move(state, id, 1))),
+              const SizedBox(width: 8),
+              Expanded(child: _QuadCell(q: 2, state: state, tc: tc,
+                hovering: _hoveredQuad == 2,
+                onHover: (v) => setState(() => _hoveredQuad = v ? 2 : null),
+                onDrop: (id) => _move(state, id, 2))),
+            ])),
+            const SizedBox(height: 8),
+            Expanded(child: Row(children: [
+              Expanded(child: _QuadCell(q: 3, state: state, tc: tc,
+                hovering: _hoveredQuad == 3,
+                onHover: (v) => setState(() => _hoveredQuad = v ? 3 : null),
+                onDrop: (id) => _move(state, id, 3))),
+              const SizedBox(width: 8),
+              Expanded(child: _QuadCell(q: 4, state: state, tc: tc,
+                hovering: _hoveredQuad == 4,
+                onHover: (v) => setState(() => _hoveredQuad = v ? 4 : null),
+                onDrop: (id) => _move(state, id, 4))),
+            ])),
+          ]),
+        )),
+      ]),
     );
   }
 
@@ -252,9 +243,7 @@ class _QuadrantScreenState extends State<QuadrantScreen> {
       ),
     );
   }
-}
 
-// Draggable chip
   // 横屏左侧：待分类竖列
   Widget _buildPoolColumn(AppState state, ThemeConfig tc,
       List<TaskModel> unassigned) {
@@ -319,6 +308,7 @@ class _QuadrantScreenState extends State<QuadrantScreen> {
             })),
     ]);
   }
+}
 
 class _DraggableChip extends StatelessWidget {
   final TaskModel task;

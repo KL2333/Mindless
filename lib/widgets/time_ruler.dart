@@ -6,7 +6,6 @@
 //   玻璃视窗有折射高光、边框、阴影，营造真实厚度感。
 //   当前时刻的刻度线（红色）始终停在视窗中央。
 
-import 'dart:math' show pi, sin, cos;
 import 'package:flutter/material.dart';
 
 class TimeRuler extends StatefulWidget {

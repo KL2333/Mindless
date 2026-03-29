@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../services/crash_logger.dart';
-import '../services/pom_engine.dart';
 import '../services/focus_quality_service.dart';
 import '../l10n/l10n.dart';
 
@@ -414,7 +413,6 @@ class _TaskTileContent extends StatelessWidget {
   final VoidCallback? onPlayTap;
 
   const _TaskTileContent({
-    super.key,
     required this.task,
     required this.editing,
     required this.ctrl,

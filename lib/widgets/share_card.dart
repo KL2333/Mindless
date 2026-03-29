@@ -1263,7 +1263,7 @@ class ShareCardWidget extends StatelessWidget {
                       width: 0.5)),
             ),
             child: Row(children: [
-              Text('📝 ' + L.appName + ' · Mindless',
+              Text('📝 ' + context.watch<AppState>().settings.appName + ' · Mindless',
                   style: TextStyle(
                       fontSize: 9,
                       color: Color(tc.ts),
@@ -2198,6 +2198,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appName = context.watch<AppState>().settings.appName;
     final f = focusSecs <= 0
         ? '0m'
         : focusSecs ~/ 3600 > 0
@@ -2239,7 +2240,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(L.appName,
+              Text(appName,
                   style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w900,

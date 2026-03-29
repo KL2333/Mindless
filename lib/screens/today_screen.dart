@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../widgets/task_tile.dart';
 import '../widgets/focus_pool.dart';
+import '../widgets/shared_widgets.dart';
 import '../beta/beta_flags.dart';
 import '../beta/beta_panel.dart';
 import '../services/crash_logger.dart';
@@ -18,6 +19,7 @@ import '../services/environment_sound_service.dart';
 import '../services/festival_calendar.dart';
 import '../services/focus_quality_service.dart';
 import '../l10n/l10n.dart';
+import 'quadrant_screen.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
@@ -31,7 +33,10 @@ class _TodayScreenState extends State<TodayScreen>
   final _focus = FocusNode();
   List<String> _selTags = [];
   String? _selBlock; // null = 待分配，'morning'/'afternoon'/'evening' = 指定时段
-  bool _showTomorrow = false;
+  
+  // View states unified: 0 = Today List, 1 = Tomorrow List, 2 = Quadrant View
+  int _viewIndex = 0;
+  
   late AnimationController _dayAnim;
   late Animation<double> _dayFade;
 
@@ -55,13 +60,17 @@ class _TodayScreenState extends State<TodayScreen>
     super.dispose();
   }
 
+  bool get _showTomorrow => _viewIndex == 1;
+  bool get _showQuadrant => _viewIndex == 2;
+
   String _displayDate(AppState state) =>
       _showTomorrow ? DateUtils2.addDays(state.todayKey, 1) : state.todayKey;
 
-  void _toggleDay() {
-    CrashLogger.tap('TodayScreen', 'toggleDay showTomorrow=${!_showTomorrow}');
+  void _switchView(int index) {
+    if (_viewIndex == index) return;
+    CrashLogger.tap('TodayScreen', 'switchView from $_viewIndex to $index');
     _dayAnim.reverse().then((_) {
-      setState(() => _showTomorrow = !_showTomorrow);
+      setState(() => _viewIndex = index);
       _dayAnim.forward();
     });
   }
@@ -88,17 +97,13 @@ class _TodayScreenState extends State<TodayScreen>
     final displayDate = _displayDate(state);
     final today = state.todayKey;
 
-    // Unassigned pool: ONLY tasks created for displayDate (today/tomorrow), not overdue reschedules
     final unassigned = state.tasks
         .where((t) =>
             !t.done && !t.ignored && t.timeBlock == 'unassigned' &&
             t.createdAt == displayDate &&
-            t.originalDate == displayDate) // must have originated on displayDate
+            t.originalDate == displayDate)
         .toList();
 
-    // Overdue = originalDate < today, not done, not ignored.
-    // Exclude only if rescheduledTo is TODAY or later (still actively rescheduled).
-    // If rescheduledTo < today (stale), treat as overdue again.
     final overdue = state.tasks
         .where((t) =>
             !t.done && !t.ignored &&
@@ -109,67 +114,91 @@ class _TodayScreenState extends State<TodayScreen>
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    // ── 横屏：左侧任务 | 右侧建议+输入 ────────────────────────────────────
-    if (isLandscape) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: FadeTransition(
-          opacity: _dayFade,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Left: task blocks (scrollable)
-            Expanded(flex: 3, child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 6, 6, 24),
-              children: [
-                _buildDayToggle(tc),
-                const SizedBox(height: 4),
-                if (!_showTomorrow) const FocusPoolWidget(),
-                _buildUnassignedPool(state, tc, unassigned, displayDate, today),
-                const SizedBox(height: 4),
-                for (final blk in ['morning', 'afternoon', 'evening'])
-                  _buildTimeBlock(state, tc, blk, displayDate, today),
-                if (!_showTomorrow) _buildOverdueSection(state, tc, overdue, today),
-                if (!_showTomorrow && kBetaFeatures) const BetaTodayPanel(),
-                const SizedBox(height: 16),
-              ])),
-            // Vertical divider
-            Container(width: 1, color: Color(tc.brd).withOpacity(0.4)),
-            // Right: input + smart plan
-            Expanded(flex: 2, child: ListView(
-              padding: const EdgeInsets.fromLTRB(8, 6, 12, 24),
-              children: [
-                _buildInputCard(state, tc, displayDate),
-                const SizedBox(height: 8),
-                if (!_showTomorrow && kBetaFeatures) const _SmartPlanPanel(),
-              ])),
-          ])));
-    }
-
     final topPad = MediaQuery.of(context).padding.top;
     final showClock = state.settings.showTopClock;
     final appBarHeight = showClock ? 78.0 : 46.0;
-    final topMargin = 8.0; // The margin we added in Padding around AppBar
-    final barBottom = topPad + appBarHeight + topMargin + 8 + state.settings.topBarOffset; // Precise spacing + Dynamic Offset
+    final topMargin = 8.0;
+    final barBottom = topPad + appBarHeight + topMargin + 8 + state.settings.topBarOffset;
+
+    // ── 横屏处理 (简单处理) ────────────────────────────────────
+    if (isLandscape) {
+      // Keep existing landscape Row structure but wrap in a column for the unified toggle
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            SizedBox(height: barBottom),
+            _buildDayToggle(tc),
+            Expanded(
+              child: FadeTransition(
+                opacity: _dayFade,
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(flex: 3, child: ListView(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 6, 24),
+                    children: [
+                      if (!_showTomorrow && !_showQuadrant) const FocusPoolWidget(),
+                      if (_showQuadrant) 
+                        QuadrantView(topPadding: 0, onSwitchBack: () => _switchView(0))
+                      else ...[
+                        _buildUnassignedPool(state, tc, unassigned, displayDate, today),
+                        const SizedBox(height: 4),
+                        for (final blk in ['morning', 'afternoon', 'evening'])
+                          _buildTimeBlock(state, tc, blk, displayDate, today),
+                        if (!_showTomorrow) _buildOverdueSection(state, tc, overdue, today),
+                        if (!_showTomorrow && kBetaFeatures) const BetaTodayPanel(),
+                      ],
+                      const SizedBox(height: 16),
+                    ])),
+                  Container(width: 1, color: Color(tc.brd).withOpacity(0.4)),
+                  Expanded(flex: 2, child: ListView(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 12, 24),
+                    children: [
+                      if (!_showQuadrant) _buildInputCard(state, tc, displayDate),
+                      const SizedBox(height: 8),
+                      if (!_showTomorrow && !_showQuadrant && kBetaFeatures) const _SmartPlanPanel(),
+                    ])),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: FadeTransition(
-        opacity: _dayFade,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(13, barBottom, 13, 110), // Content starts right after the floating bar
-          children: [
-            _buildDayToggle(tc),
-            _buildInputCard(state, tc, displayDate),
-            const SizedBox(height: 8),
-            if (!_showTomorrow) const FocusPoolWidget(),
-            _buildUnassignedPool(state, tc, unassigned, displayDate, today),
-            const SizedBox(height: 6),
-            for (final blk in ['morning', 'afternoon', 'evening'])
-              _buildTimeBlock(state, tc, blk, displayDate, today),
-            if (!_showTomorrow) _buildOverdueSection(state, tc, overdue, today),
-            // 智能建议在今日界面底部
-            if (!_showTomorrow && kBetaFeatures) const _SmartPlanPanel(),
-          ],
-        ),
+      body: Column(
+        children: [
+          // Fixed Header Space
+          SizedBox(height: barBottom),
+          _buildDayToggle(tc),
+          
+          // Scrollable Content
+          Expanded(
+            child: FadeTransition(
+              opacity: _dayFade,
+              child: _showQuadrant 
+                ? QuadrantView(
+                    topPadding: 0, 
+                    onSwitchBack: () => _switchView(0),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(13, 0, 13, 110),
+                    children: [
+                      _buildInputCard(state, tc, displayDate),
+                      const SizedBox(height: 8),
+                      if (!_showTomorrow) const FocusPoolWidget(),
+                      _buildUnassignedPool(state, tc, unassigned, displayDate, today),
+                      const SizedBox(height: 6),
+                      for (final blk in ['morning', 'afternoon', 'evening'])
+                        _buildTimeBlock(state, tc, blk, displayDate, today),
+                      if (!_showTomorrow) _buildOverdueSection(state, tc, overdue, today),
+                      if (!_showTomorrow && kBetaFeatures) const _SmartPlanPanel(),
+                    ],
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -178,63 +207,57 @@ class _TodayScreenState extends State<TodayScreen>
   Widget _buildDayToggle(ThemeConfig tc) {
     final state = context.watch<AppState>();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Stack(alignment: Alignment.center, children: [
-        // Centered day toggle pills
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          _dayBtn(tc, L.today, !_showTomorrow),
-          _dayBtn(tc, L.tomorrow, _showTomorrow),
-        ]),
-        // Share button pinned to the right
-        if (!_showTomorrow)
-          Positioned(
-            right: 0,
-            child: GestureDetector(
-              onTap: () => showShareCardSheet(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: state.cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: Color(tc.acc).withOpacity(0.30), width: 1),
+      padding: const EdgeInsets.only(bottom: 12, top: 4, left: 16, right: 16),
+      child: Row(
+        children: [
+          // Left Spacing to keep Segmented Control centered
+          const Expanded(child: SizedBox()),
+          
+          // Centered day toggle pills - Liquid Glass Segmented Control
+          LiquidSegmentedControl(
+            labels: [L.today, L.tomorrow, L.quadrantTitle],
+            currentIndex: _viewIndex,
+            onValueChanged: _switchView,
+            tc: tc,
+            width: 240,
+          ),
+          
+          // Action Button Area on the Right
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () => showShareCardSheet(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: state.cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: Color(tc.acc).withOpacity(0.20), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.ios_share_rounded, 
+                          size: 11, // Reduced 10-15% from original 12-14
+                          color: Color(tc.acc)),
+                      const SizedBox(width: 4),
+                      Text(L.todayShare,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Color(tc.acc),
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.ios_share_rounded, size: 12,
-                      color: Color(tc.acc)),
-                  const SizedBox(width: 4),
-                  Text(L.todayShare,
-                      style: TextStyle(fontSize: 11,
-                          color: Color(tc.acc),
-                          fontWeight: FontWeight.w600)),
-                ]),
               ),
             ),
           ),
-      ]),
+        ],
+      ),
     );
   }
-
-  Widget _dayBtn(ThemeConfig tc, String label, bool active) =>
-      GestureDetector(
-        onTap: active ? null : _toggleDay,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: active ? Color(tc.na) : Color(tc.cb),
-            borderRadius: label == L.today
-                ? const BorderRadius.horizontal(left: Radius.circular(20))
-                : const BorderRadius.horizontal(right: Radius.circular(20)),
-          ),
-          child: Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: active ? Color(tc.nt) : Color(tc.ts),
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.normal)),
-        ),
-      );
 
   // ── Input card ────────────────────────────────────────────
   Widget _buildInputCard(AppState state, ThemeConfig tc, String displayDate) {

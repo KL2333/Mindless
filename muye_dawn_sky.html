@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:390px;height:844px;background:#000;overflow:hidden;font-family:'SF Mono','Fira Code','Consolas',monospace}
+canvas{position:absolute;top:0;left:0}
+.hud{position:absolute;top:0;left:0;width:390px;height:844px;pointer-events:none}
+.status-bar{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:linear-gradient(to bottom,rgba(0,0,0,0.55),transparent)}
+.sl,.sr{font-size:8.5px;color:rgba(100,180,255,0.45);letter-spacing:.8px;line-height:1.7}
+.sc{font-size:10px;color:rgba(140,210,255,0.7);letter-spacing:3px}
+.az-bar{position:absolute;top:44px;left:0;right:0;height:16px;display:flex;align-items:center;justify-content:space-around;padding:0 20px}
+.az-t{font-size:7.5px;color:rgba(100,160,255,0.3);letter-spacing:1px;text-align:center;line-height:1.4}
+.alt-axis{position:absolute;right:12px;top:62px;display:flex;flex-direction:column;justify-content:space-between;height:540px}
+.at{display:flex;align-items:center;gap:4px}
+.al{width:10px;height:1px;background:rgba(100,160,255,0.18)}
+.av{font-size:7px;color:rgba(100,160,255,0.28);letter-spacing:.5px}
+.conj-box{position:absolute;top:340px;right:10px;border:1px solid rgba(100,210,255,0.18);padding:6px 10px;background:rgba(0,8,18,0.65)}
+.cb-t{font-size:9px;color:rgba(100,220,255,0.8);letter-spacing:2px}
+.cb-s{font-size:7px;color:rgba(100,170,255,0.4);letter-spacing:1px;margin-top:2px}
+.jup-lbl{position:absolute;top:152px;left:182px}
+.jl-n{font-size:10px;color:rgba(200,235,255,0.85);letter-spacing:1.5px}
+.jl-d{font-size:7.5px;color:rgba(140,190,255,0.45);letter-spacing:1px;margin-top:2px}
+.fang-lbl{position:absolute;top:308px;left:18px}
+.fl-n{font-size:9.5px;color:rgba(100,210,255,0.7);letter-spacing:2px}
+.fl-d{font-size:7px;color:rgba(100,160,255,0.35);letter-spacing:1px;margin-top:2px}
+.data-panel{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.88) 65%,transparent);padding:18px 16px 20px}
+.dp-div{width:100%;height:1px;background:rgba(100,160,255,0.1);margin-bottom:12px}
+.dp-row{display:flex;justify-content:space-between;margin-bottom:10px}
+.dp-col{flex:1}
+.dp-col.r{text-align:right}
+.dp-col.c{text-align:center}
+.dk{font-size:7.5px;color:rgba(100,160,255,0.35);letter-spacing:1.5px;text-transform:uppercase}
+.dv{font-size:11px;color:rgba(240,240,255,0.7);letter-spacing:.5px;margin-top:3px}
+.dv.a{color:rgba(120,220,255,0.95);font-weight:600}
+.dv.s{font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.li{display:flex;align-items:center;gap:4px}
+.ld{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.ln{font-size:7.5px;color:rgba(255,255,255,0.38);letter-spacing:.5px}
+</style>
+</head>
+<body>
+<canvas id="c" width="390" height="844"></canvas>
+<div class="hud">
+  <div class="status-bar">
+    <div class="sl">ALT/AZ PROJECTION<br>35°26'N · 114°15'E</div>
+    <div class="sc">南 S</div>
+    <div class="sr">−1044.01.09 · 05:30<br>甲子日 · MUYE</div>
+  </div>
+  <div class="az-bar">
+    <span class="az-t">ESE<br>110°</span>
+    <span class="az-t">SE<br>135°</span>
+    <span class="az-t">SSE<br>157°</span>
+    <span class="az-t">S<br>180°</span>
+    <span class="az-t">SSW<br>203°</span>
+    <span class="az-t">SW<br>225°</span>
+  </div>
+  <div class="alt-axis">
+    <div class="at"><span class="av">75°</span><div class="al"></div></div>
+    <div class="at"><span class="av">60°</span><div class="al"></div></div>
+    <div class="at"><span class="av">45°</span><div class="al"></div></div>
+    <div class="at"><span class="av">30°</span><div class="al"></div></div>
+    <div class="at"><span class="av">15°</span><div class="al"></div></div>
+    <div class="at"><span class="av">0°</span><div class="al"></div></div>
+  </div>
+  <div class="jup-lbl">
+    <div class="jl-n">♃ 岁星</div>
+    <div class="jl-d">Jupiter · mag −2.6</div>
+    <div class="jl-d">alt 58° · 南中天</div>
+  </div>
+  <div class="fang-lbl">
+    <div class="fl-n">房宿</div>
+    <div class="fl-d">Fang · π δ β σ Sco</div>
+  </div>
+  <div class="conj-box">
+    <div class="cb-t">五纬聚房</div>
+    <div class="cb-s">5-PLANET CONJUNCTION</div>
+    <div class="cb-s">&lt; 18° · FANG LODGE</div>
+  </div>
+  <div class="data-panel">
+    <div class="dp-div"></div>
+    <div class="dp-row">
+      <div class="dp-col">
+        <div class="dk">Event</div>
+        <div class="dv a">武王克商</div>
+        <div class="dv s">Battle of Muye</div>
+      </div>
+      <div class="dp-col c">
+        <div class="dk">Planets</div>
+        <div class="dv a">五星聚房</div>
+        <div class="dv s">Fang · Scorpii</div>
+      </div>
+      <div class="dp-col r">
+        <div class="dk">Meridian</div>
+        <div class="dv a">岁星鼎</div>
+        <div class="dv s">Jupiter transit</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="li"><div class="ld" style="background:#C8EEFF;box-shadow:0 0 4px #C8EEFF"></div><span class="ln">岁 Jup</span></div>
+      <div class="li"><div class="ld" style="background:#FF7055;box-shadow:0 0 4px #FF7055"></div><span class="ln">荧 Mar</span></div>
+      <div class="li"><div class="ld" style="background:#FFFDE0;box-shadow:0 0 4px #FFFDE0"></div><span class="ln">太白 Ven</span></div>
+      <div class="li"><div class="ld" style="background:#AAD4E8;box-shadow:0 0 4px #AAD4E8"></div><span class="ln">辰 Mer</span></div>
+      <div class="li"><div class="ld" style="background:#E8C878;box-shadow:0 0 4px #E8C878"></div><span class="ln">镇 Sat</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d'),W=390,H=844;
+const HY=664,ZY=60,SKH=HY-ZY;
+let F=0;
+function aY(a){return HY-(a/90)*SKH}
+function aX(az){return W/2+(az-180)*(W/100)}
+function bv2rgb(bv){
+  if(bv<-0.3)return[155,176,255];if(bv<0)return[170,191,255];
+  if(bv<0.3)return[202,215,255];if(bv<0.6)return[248,247,255];
+  if(bv<1.0)return[255,224,185];if(bv<1.4)return[255,188,132];
+  return[255,150,100];
+}
+function mR(m){return Math.max(0.3,2.6-m*0.42)}
+const STARS=[
+  [172,40,2.9,0.9],[177,37,2.6,1.1],[183,34,2.3,1.2],[191,31,3.2,0.7],
+  [207,28,0.9,1.83],[213,25,2.8,1.7],[219,22,3.0,1.5],
+  [161,46,2.3,1.0],[155,43,2.8,0.8],[149,39,2.5,0.1],
+  [225,18,3.0,1.6],[229,14,2.7,1.8],[233,10,3.1,1.9],
+  [196,55,2.1,0.4],[201,50,2.6,0.3],[186,52,2.9,0.6],
+  [239,18,2.1,0.1],[245,14,2.7,0.2],[251,10,2.8,0.0],
+  [141,38,0.97,0.15],[148,35,2.7,0.6],
+  [145,61,3.8,0.2],[151,56,4.1,0.5],[159,51,3.6,0.8],
+  [166,49,4.3,1.0],[171,44,3.9,1.2],[176,53,4.0,0.4],
+  [181,61,3.7,0.1],[186,59,4.2,0.3],[191,56,3.8,0.7],
+  [196,63,4.4,0.9],[201,59,3.5,1.1],[206,53,4.1,1.3],
+  [211,49,3.9,0.6],[216,45,4.3,0.2],[221,41,4.0,0.5],
+  [226,37,3.7,0.8],[231,33,4.2,1.0],[164,61,4.1,0.3],
+  [173,69,3.8,0.6],[189,65,4.0,0.2],[197,71,4.3,0.8],
+  [205,67,3.9,0.4],[216,63,4.1,1.1],[231,25,4.0,1.4],
+  [156,31,5.0,0.5],[163,29,5.2,0.8],[169,27,4.8,0.3],
+  [177,25,5.1,1.0],[183,23,4.9,0.6],[189,21,5.3,0.2],
+  [195,25,5.0,0.9],[201,29,4.7,1.2],[209,31,5.2,0.4],
+  [217,27,4.9,0.7],[223,23,5.1,1.1],[229,19,4.8,1.5],
+  [143,45,4.6,0.1],[148,41,4.8,0.4],[154,37,4.5,0.7],
+  [237,17,4.7,1.3],[242,13,5.0,1.6],[247,9,4.8,1.8],
+  [176,79,4.3,0.1],[183,81,3.9,0.3],[191,77,4.5,0.6],
+  [199,83,4.1,0.4],[206,79,4.6,0.8],[213,75,4.2,0.5],
+  [130,33,4.5,0.2],[135,29,4.8,0.6],[137,42,4.2,0.1],
+  [258,8,4.3,1.7],[263,5,4.9,1.9],[170,15,4.6,0.8],
+  [161,18,4.4,1.1],[155,22,4.7,0.9],[147,28,4.3,0.5],
+  [218,35,4.5,1.2],[224,28,4.8,0.9],[235,20,4.4,1.5],
+  [176,88,4.0,0.3],[185,86,4.4,0.6],[193,84,3.8,0.1],
+];
+const PLANETS=[
+  {az:180,alt:58,r:5,c:'#C8EEFF',g:'rgba(200,232,255,0.55)',m:true},
+  {az:177,alt:38,r:3.5,c:'#FF7055',g:'rgba(255,112,85,0.5)'},
+  {az:184,alt:35,r:4,c:'#FFFDE8',g:'rgba(255,253,220,0.55)'},
+  {az:175,alt:37,r:2.6,c:'#AAD4E8',g:'rgba(170,212,232,0.42)'},
+  {az:186,alt:41,r:3.2,c:'#E8C878',g:'rgba(232,200,120,0.45)'},
+];
+function sky(){
+  const sg=ctx.createLinearGradient(0,ZY,0,HY);
+  sg.addColorStop(0,'#000208');sg.addColorStop(0.5,'#000410');
+  sg.addColorStop(0.85,'#010918');sg.addColorStop(1,'#020e20');
+  ctx.fillStyle=sg;ctx.fillRect(0,ZY,W,SKH);
+  // subtle pre-dawn blue on east horizon edge
+  const dg=ctx.createRadialGradient(0,HY,0,0,HY,280);
+  dg.addColorStop(0,'rgba(20,45,90,0.35)');dg.addColorStop(1,'transparent');
+  ctx.fillStyle=dg;ctx.fillRect(0,ZY,W,SKH);
+}
+function milkyway(){
+  ctx.save();
+  const mg=ctx.createLinearGradient(260,HY,140,ZY);
+  mg.addColorStop(0,'transparent');mg.addColorStop(0.25,'rgba(50,75,110,0.05)');
+  mg.addColorStop(0.5,'rgba(70,100,140,0.09)');mg.addColorStop(0.75,'rgba(50,75,110,0.05)');
+  mg.addColorStop(1,'transparent');
+  ctx.fillStyle=mg;ctx.fillRect(0,ZY,W,SKH);ctx.restore();
+}
+function grid(){
+  ctx.save();
+  // Alt lines
+  [15,30,45,60,75].forEach(a=>{
+    const y=aY(a);
+    ctx.strokeStyle='rgba(80,140,220,0.07)';ctx.lineWidth=0.6;ctx.setLineDash([3,14]);
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+  });
+  // Az lines
+  [150,165,180,195,210,225].forEach(az=>{
+    const x=aX(az),isSouth=az===180;
+    ctx.strokeStyle=isSouth?'rgba(100,170,255,0.14)':'rgba(80,130,200,0.06)';
+    ctx.lineWidth=isSouth?0.9:0.5;ctx.setLineDash(isSouth?[5,9]:[3,14]);
+    ctx.beginPath();ctx.moveTo(x,ZY);ctx.lineTo(x,HY);ctx.stroke();
+  });
+  ctx.setLineDash([]);ctx.restore();
+}
+function stars(){
+  STARS.forEach(([az,al,mag,bv])=>{
+    if(al<0||al>90)return;
+    const x=aX(az),y=aY(al);
+    if(x<-20||x>W+20)return;
+    const r=mR(mag),[cr,cg,cb]=bv2rgb(bv);
+    const hf=Math.min(1,al/10);
+    const tw=0.82+0.18*Math.sin(F*0.055+az*0.31+al*0.19);
+    ctx.save();ctx.globalAlpha=hf*tw;
+    if(mag<2.5){
+      const gr=r*5.5,gg=ctx.createRadialGradient(x,y,0,x,y,gr);
+      gg.addColorStop(0,`rgba(${cr},${cg},${cb},0.35)`);gg.addColorStop(1,'transparent');
+      ctx.fillStyle=gg;ctx.beginPath();ctx.arc(x,y,gr,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=`rgb(${cr},${cg},${cb})`;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    if(mag<1.5){
+      ctx.strokeStyle=`rgba(${cr},${cg},${cb},0.22)`;ctx.lineWidth=0.6;
+      const l=r*7;
+      ctx.beginPath();
+      ctx.moveTo(x-l,y);ctx.lineTo(x+l,y);ctx.moveTo(x,y-l);ctx.lineTo(x,y+l);
+      ctx.moveTo(x-l*.65,y-l*.65);ctx.lineTo(x+l*.65,y+l*.65);
+      ctx.moveTo(x+l*.65,y-l*.65);ctx.lineTo(x-l*.65,y+l*.65);
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+function constellations(){
+  ctx.save();
+  const segs=[
+    [[172,40],[177,37],[183,34],[191,31]],
+    [[207,28],[213,25],[219,22]],
+    [[161,46],[155,43]],[[161,46],[172,40]],
+    [[219,22],[225,18],[229,14],[233,10]],
+    [[141,38],[148,35]],[[149,39],[161,46]],
+  ];
+  ctx.lineWidth=0.6;ctx.strokeStyle='rgba(100,170,255,0.15)';
+  segs.forEach(seg=>{
+    ctx.beginPath();
+    seg.forEach(([az,al],i)=>{const x=aX(az),y=aY(al);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+    ctx.stroke();
+  });
+  // 房宿 highlight
+  ctx.strokeStyle='rgba(120,200,255,0.28)';ctx.lineWidth=1;
+  ctx.beginPath();
+  [[172,40],[177,37],[183,34],[191,31]].forEach(([az,al],i)=>{
+    const x=aX(az),y=aY(al);i?ctx.lineTo(x,y):ctx.moveTo(x,y)
+  });
+  ctx.stroke();
+  ctx.restore();
+}
+function planets(){
+  PLANETS.forEach((p,i)=>{
+    const x=aX(p.az),y=aY(p.alt);
+    const pulse=0.82+0.18*Math.sin(F*0.038+i*1.3);
+    ctx.save();
+    const gr=ctx.createRadialGradient(x,y,0,x,y,p.r*9*pulse);
+    gr.addColorStop(0,p.g);gr.addColorStop(0.4,p.g.replace(/[\d.]+\)$/,'0.08)'));
+    gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,p.r*9*pulse,0,Math.PI*2);ctx.fill();
+    const pr=ctx.createRadialGradient(x-p.r*.28,y-p.r*.28,0,x,y,p.r);
+    pr.addColorStop(0,'rgba(255,255,255,0.9)');pr.addColorStop(0.4,p.c);pr.addColorStop(1,p.c);
+    ctx.fillStyle=pr;ctx.beginPath();ctx.arc(x,y,p.r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=p.c;ctx.lineWidth=0.7;ctx.globalAlpha=0.28*pulse;
+    const sl=p.r*8;
+    ctx.beginPath();ctx.moveTo(x-sl,y);ctx.lineTo(x+sl,y);ctx.moveTo(x,y-sl);ctx.lineTo(x,y+sl);ctx.stroke();
+    if(p.m){
+      ctx.globalAlpha=0.35*pulse;ctx.strokeStyle='rgba(200,235,255,0.7)';
+      ctx.lineWidth=1;ctx.setLineDash([3,5]);
+      ctx.beginPath();ctx.arc(x,y,p.r*2.8,0,Math.PI*2);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
+  });
+}
+function conjCircle(){
+  const cx=aX(180),cy=aY(38),rx=72,ry=52;
+  ctx.save();
+  ctx.strokeStyle='rgba(100,210,255,0.11)';ctx.lineWidth=1;ctx.setLineDash([4,9]);
+  ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  // corner ticks
+  [0,Math.PI/2,Math.PI,3*Math.PI/2].forEach(a=>{
+    const ex=cx+Math.cos(a)*rx,ey=cy+Math.sin(a)*ry;
+    ctx.strokeStyle='rgba(100,210,255,0.22)';ctx.lineWidth=1;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(ex-5*Math.cos(a),ey-5*Math.sin(a));ctx.lineTo(ex,ey);ctx.stroke();
+  });
+  // leader to box
+  ctx.strokeStyle='rgba(100,200,255,0.12)';ctx.lineWidth=0.7;ctx.setLineDash([3,7]);
+  ctx.beginPath();ctx.moveTo(cx+rx,cy-8);ctx.lineTo(W-10,aY(36)+4);ctx.stroke();
+  ctx.restore();
+}
+function horizon(){
+  ctx.save();
+  const hg=ctx.createLinearGradient(0,HY-20,0,HY+10);
+  hg.addColorStop(0,'transparent');hg.addColorStop(1,'rgba(5,20,45,0.7)');
+  ctx.fillStyle=hg;ctx.fillRect(0,HY-20,W,30);
+  ctx.strokeStyle='rgba(100,160,255,0.2)';ctx.lineWidth=1;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(0,HY);ctx.lineTo(W,HY);ctx.stroke();
+  const gg=ctx.createLinearGradient(0,HY,0,H);
+  gg.addColorStop(0,'#04101e');gg.addColorStop(0.4,'#020b16');gg.addColorStop(1,'#010609');
+  ctx.fillStyle=gg;ctx.fillRect(0,HY,W,H-HY);
+  // faint inscription in ground
+  ctx.globalAlpha=0.06;
+  ctx.font='600 26px serif';ctx.fillStyle='rgba(140,220,255,1)';ctx.textAlign='center';
+  ctx.fillText('余其宅兹中國',W/2,HY+58);
+  ctx.globalAlpha=0.04;ctx.font='9px monospace';ctx.fillStyle='rgba(140,200,255,1)';
+  ctx.fillText('Li Gui Inscription · 岁鼎克昏夙有商',W/2,HY+82);
+  ctx.restore();
+}
+function altTicks(){
+  ctx.save();ctx.font='7px monospace';ctx.textAlign='left';
+  [15,30,45,60].forEach(a=>{
+    ctx.fillStyle='rgba(100,160,255,0.22)';
+    ctx.fillText(`${a}°`,13,aY(a)+3);
+  });
+  ctx.fillStyle='rgba(100,160,255,0.2)';ctx.textAlign='center';
+  ctx.fillText('S · 180°',aX(180),HY+13);
+  ctx.restore();
+}
+function render(){
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  sky();milkyway();grid();stars();constellations();conjCircle();planets();horizon();altTicks();
+  if(F<100){
+    ctx.save();ctx.globalAlpha=Math.max(0,1-F/75);
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.restore();
+  }
+  F++;requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>

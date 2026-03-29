@@ -5,12 +5,19 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.usage.UsageStatsManager
+import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.os.VibrationEffect
@@ -28,17 +35,58 @@ class MainActivity : FlutterActivity() {
 
     private val USAGE_CHANNEL    = "com.lsz.app/usage_stats"
     private val DEVICE_CHANNEL  = "com.lsz.app/device_info"
-    private val LIVE_CHANNEL    = "com.lsz.app/live_update"
     private val KEEPALIVE_CH    = "com.lsz.app/keepalive"
     private val WEATHER_CH      = "com.lsz.app/weather"
     private val ALARM_CH        = "com.lsz.app/pom_alarm"
+    private val PHONE_FLIP_CH   = "com.lsz.app/phone_flip"
+    private val PHONE_FLIP_EVT  = "com.lsz.app/phone_flip_events"
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var activeRingtone: android.media.Ringtone? = null
     private var noiseStreamThread: Thread? = null
     private var noiseEventSink: EventChannel.EventSink? = null
+    private var phoneFlipEventSink: EventChannel.EventSink? = null
     private var _bgImageResult: io.flutter.plugin.common.MethodChannel.Result? = null
     private val REQ_BG_IMAGE = 0x3B6
+    private var sensorManager: SensorManager? = null
+    private var accelSensor: Sensor? = null
+    private var proximitySensor: Sensor? = null
+    private var filteredX = 0.0
+    private var filteredY = 0.0
+    private var filteredZ = 0.0
+    private var isFaceDownState = false
+    private var proximityNear = false
+    private var lastFlipEmitAt = 0L
+    private val phoneFlipListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            when (event.sensor.type) {
+                Sensor.TYPE_ACCELEROMETER -> handleAccelerometer(event.values)
+                Sensor.TYPE_PROXIMITY -> {
+                    proximityNear = event.values.firstOrNull()?.let {
+                        it < (proximitySensor?.maximumRange ?: 0f)
+                    } ?: false
+                }
+            }
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.POST_NOTIFICATIONS,
+                    "android.permission.POST_PROMOTED_NOTIFICATIONS"
+                ),
+                1001
+            )
+        }
+    }
 
     // Packages never shown to the user
     private val SYSTEM_BLACKLIST = setOf(
@@ -258,32 +306,26 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        // ── Live Update (灵动岛) Channel ─────────────────────────────────────
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LIVE_CHANNEL)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PHONE_FLIP_CH)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "show" -> {
-                        val secsLeft  = call.argument<Int>("secsLeft")  ?: 1500
-                        val totalSecs = call.argument<Int>("totalSecs") ?: 1500
-                        val phase     = call.argument<String>("phase")  ?: "focus"
-                        val taskName  = call.argument<String>("taskName")
-                        val cycle     = call.argument<Int>("cycle")     ?: 1
-                        val running   = call.argument<Boolean>("running") ?: true
-                        PomodoroLiveService.startOrUpdate(
-                            this, secsLeft, totalSecs, phase, taskName, cycle, running)
-                        result.success(null)
-                    }
-                    "dismiss" -> {
-                        PomodoroLiveService.stop(this)
-                        result.success(null)
-                    }
-                    "isSupported" -> {
-                        // 告诉 Flutter 当前设备品牌，让 Dart 侧决定是否用 Native 服务
-                        result.success(Build.BRAND.lowercase())
-                    }
+                    "isFaceDown" -> result.success(isFaceDownSnapshot())
                     else -> result.notImplemented()
                 }
             }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, PHONE_FLIP_EVT)
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    phoneFlipEventSink = events
+                    startPhoneFlipMonitoring()
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    phoneFlipEventSink = null
+                    stopPhoneFlipMonitoring()
+                }
+            })
 
         // ── 通知数据修复 + 原生通知 Channel ──────────────────────────────────
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.lsz.app/notif_repair")
@@ -297,10 +339,8 @@ class MainActivity : FlutterActivity() {
                             val prefs2 = getSharedPreferences(
                                 packageName + "_preferences", Context.MODE_PRIVATE)
                             prefs2.edit().remove("scheduled_notifications").apply()
-                            android.util.Log.i("NotifRepair", "Cleared scheduled notification cache")
                             result.success(true)
                         } catch (e: Exception) {
-                            android.util.Log.w("NotifRepair", "Clear failed: ${e.message}")
                             result.success(false)
                         }
                     }
@@ -315,6 +355,12 @@ class MainActivity : FlutterActivity() {
                         } catch (e: Exception) {
                             result.success(false)
                         }
+                    }
+                    "requestPermission" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0x900)
+                        }
+                        result.success(true)
                     }
                     else -> result.notImplemented()
                 }
@@ -333,23 +379,27 @@ class MainActivity : FlutterActivity() {
                                     "lsz:PomodoroWakeLock"
                                 ).apply { acquire(90 * 60 * 1000L) } // max 90min
                             }
-                            // Show heads-up (priority HIGH) focus notification
-                            showFocusNotification(
-                                call.argument<String>("title") ?: "🍅 专注中",
-                                call.argument<String>("body")  ?: "番茄钟正在运行"
-                            )
                             result.success(true)
                         } catch (e: Exception) {
-                            android.util.Log.w("Keepalive", "WakeLock acquire failed: ${e.message}")
                             result.success(false)
                         }
                     }
+                    "primeKeepAlive" -> {
+                        result.success(primeKeepAlive())
+                    }
+                    "getPowerProfile" -> {
+                        result.success(mapOf(
+                            "brand" to Build.BRAND.lowercase(),
+                            "manufacturer" to Build.MANUFACTURER.lowercase(),
+                            "ignoringBatteryOptimizations" to isIgnoringBatteryOptimizations(),
+                            "oemTier" to keepAliveOemTier()
+                        ))
+                    }
                     "update" -> {
                         try {
-                            showFocusNotification(
-                                call.argument<String>("title") ?: "🍅 专注中",
-                                call.argument<String>("body")  ?: "番茄钟正在运行"
-                            )
+                            if (wakeLock?.isHeld == true) {
+                                wakeLock?.acquire(90 * 60 * 1000L)
+                            }
                             result.success(true)
                         } catch (e: Exception) { result.success(false) }
                     }
@@ -487,7 +537,12 @@ class MainActivity : FlutterActivity() {
                         // Quick single 1.5s snapshot (pomodoro background sampling)
                         Thread {
                             try {
-                                val recorder = android.media.MediaRecorder()
+                                val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    android.media.MediaRecorder(this@MainActivity)
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    android.media.MediaRecorder()
+                                }
                                 recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
                                 recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.THREE_GPP)
                                 recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AMR_NB)
@@ -530,7 +585,12 @@ class MainActivity : FlutterActivity() {
                     noiseStreamThread = Thread {
                         var recorder: android.media.MediaRecorder? = null
                         try {
-                            recorder = android.media.MediaRecorder()
+                            recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                android.media.MediaRecorder(this@MainActivity)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                android.media.MediaRecorder()
+                            }
                             recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
                             recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.THREE_GPP)
                             recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AMR_NB)
@@ -557,7 +617,6 @@ class MainActivity : FlutterActivity() {
                             try { recorder?.stop() } catch (_: Exception) {}
                             recorder?.release()
                         } catch (e: Exception) {
-                            android.util.Log.w("AudioNoise", "stream error: ${e.message}")
                             android.os.Handler(mainLooper).post {
                                 noiseEventSink?.endOfStream()
                             }
@@ -683,6 +742,7 @@ class MainActivity : FlutterActivity() {
                     "ring" -> {
                         val playSound = call.argument<Boolean>("sound") ?: true
                         val doVibrate = call.argument<Boolean>("vibrate") ?: true
+                        val persistent = call.argument<Boolean>("persistent") ?: false
                         try {
                             // 1. 将 App 置于最前台
                             val am2 = getSystemService(Context.ACTIVITY_SERVICE)
@@ -731,19 +791,26 @@ class MainActivity : FlutterActivity() {
                                         activeRingtone?.play()
                                     }
                                 } catch (e: Exception) {
-                                    android.util.Log.w("PomAlarm", "sound failed: ${e.message}")
                                 }
                             }
 
                             // 4. 持续震动（循环直到 stop 调用，repeat=0）
                             if (doVibrate) {
                                 try {
-                                    val pattern = longArrayOf(0, 500, 300, 500, 300, 800, 500)
+                                    val pattern = if (persistent) {
+                                        // 持续、紧促的震动
+                                        longArrayOf(0, 1000, 500, 1000, 500)
+                                    } else {
+                                        // 短促的提示性震动
+                                        longArrayOf(0, 500, 300, 500, 300, 800, 500)
+                                    }
+                                    val repeatIndex = if (persistent) 0 else -1
+                                    
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                         val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE)
                                             as VibratorManager
                                         vm.defaultVibrator.vibrate(
-                                            VibrationEffect.createWaveform(pattern, 0)
+                                            VibrationEffect.createWaveform(pattern, repeatIndex)
                                         )
                                     } else {
                                         @Suppress("DEPRECATION")
@@ -751,20 +818,18 @@ class MainActivity : FlutterActivity() {
                                             as Vibrator
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                             vibrator.vibrate(
-                                                VibrationEffect.createWaveform(pattern, 0)
+                                                VibrationEffect.createWaveform(pattern, repeatIndex)
                                             )
                                         } else {
                                             @Suppress("DEPRECATION")
-                                            vibrator.vibrate(pattern, 0)
+                                            vibrator.vibrate(pattern, repeatIndex)
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    android.util.Log.w("PomAlarm", "vibrate failed: ${e.message}")
                                 }
                             }
                             result.success(true)
                         } catch (e: Exception) {
-                            android.util.Log.w("PomAlarm", "ring failed: ${e.message}")
                             result.success(false)
                         }
                     }
@@ -866,6 +931,161 @@ class MainActivity : FlutterActivity() {
                 .build()
         }
         nm.notify(9001, notif)
+    }
+
+    private fun primeKeepAlive(): String {
+        if (!isTargetKeepAliveVendor()) return "generic"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "legacy"
+        if (isIgnoringBatteryOptimizations()) return "ready"
+        return try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            "requested_whitelist"
+        } catch (e: Exception) {
+            if (openVendorKeepAliveSettings()) "opened_vendor_settings" else "unavailable"
+        }
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun keepAliveOemTier(): String {
+        val brand = Build.BRAND.lowercase()
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        return when {
+            brand.contains("huawei") || manufacturer.contains("huawei") ||
+                brand.contains("honor") || manufacturer.contains("honor") -> "harmony"
+            brand.contains("oppo") || brand.contains("oneplus") || brand.contains("realme") ||
+                manufacturer.contains("oppo") || manufacturer.contains("oneplus") ||
+                manufacturer.contains("realme") || manufacturer.contains("oplus") -> "coloros"
+            else -> "generic"
+        }
+    }
+
+    private fun isTargetKeepAliveVendor(): Boolean =
+        keepAliveOemTier() == "harmony" || keepAliveOemTier() == "coloros"
+
+    private fun openVendorKeepAliveSettings(): Boolean {
+        val intents = when (keepAliveOemTier()) {
+            "harmony" -> listOf(
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.optimize.process.ProtectActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                )),
+            )
+            "coloros" -> listOf(
+                Intent().setComponent(ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.startupapp.StartupAppListActivity"
+                )),
+                Intent().setComponent(ComponentName(
+                    "com.coloros.oppoguardelf",
+                    "com.coloros.powermanager.fuelgaue.PowerConsumptionActivity"
+                )),
+            )
+            else -> emptyList()
+        } + listOf(
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+        )
+
+        intents.forEach { intent ->
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (intent.resolveActivity(packageManager) != null) {
+                    startActivity(intent)
+                    return true
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return false
+    }
+
+    private fun startPhoneFlipMonitoring() {
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        val sm = sensorManager ?: return
+        accelSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        proximitySensor = sm.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+        filteredX = 0.0
+        filteredY = 0.0
+        filteredZ = 0.0
+        isFaceDownState = isFaceDownSnapshot()
+        accelSensor?.let {
+            sm.registerListener(phoneFlipListener, it, SensorManager.SENSOR_DELAY_UI)
+        }
+        proximitySensor?.let {
+            sm.registerListener(phoneFlipListener, it, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
+    private fun stopPhoneFlipMonitoring() {
+        sensorManager?.unregisterListener(phoneFlipListener)
+        sensorManager = null
+        accelSensor = null
+        proximitySensor = null
+    }
+
+    private fun handleAccelerometer(values: FloatArray) {
+        val alpha = 0.82
+        filteredX = alpha * filteredX + (1 - alpha) * values[0]
+        filteredY = alpha * filteredY + (1 - alpha) * values[1]
+        filteredZ = alpha * filteredZ + (1 - alpha) * values[2]
+        val magnitude = Math.sqrt(
+            filteredX * filteredX + filteredY * filteredY + filteredZ * filteredZ
+        )
+        val stable = Math.abs(magnitude - SensorManager.GRAVITY_EARTH) < 3.4
+        val faceDown = filteredZ < -7.2 &&
+            (proximityNear || proximitySensor == null || stable)
+        val pickedUp = filteredZ > -4.2 ||
+            Math.abs(filteredX) > 4.5 ||
+            Math.abs(filteredY) > 4.5
+
+        if (faceDown && !isFaceDownState) {
+            isFaceDownState = true
+            emitPhoneFlip("face_down")
+        } else if (!faceDown && isFaceDownState && pickedUp) {
+            isFaceDownState = false
+            emitPhoneFlip("picked_up")
+        }
+    }
+
+    private fun emitPhoneFlip(type: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastFlipEmitAt < 450) return
+        lastFlipEmitAt = now
+        android.os.Handler(mainLooper).post {
+            phoneFlipEventSink?.success(
+                mapOf(
+                    "type" to type,
+                    "z" to filteredZ
+                )
+            )
+        }
+    }
+
+    private fun isFaceDownSnapshot(): Boolean {
+        return filteredZ < -7.2 && (proximityNear || proximitySensor == null)
     }
 
     private fun hasUsagePermission(): Boolean {

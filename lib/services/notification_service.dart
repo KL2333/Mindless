@@ -52,12 +52,15 @@ class NotificationService {
   }
 
   static Future<void> requestPermission() async {
-    if (_pluginBroken) return;
     try {
-      await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+      if (!_pluginBroken) {
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+      } else {
+        await _repairCh.invokeMethod('requestPermission');
+      }
     } catch (_) {}
   }
 

@@ -2,8 +2,6 @@
 // 番茄钟深度分析 — 基于 crash log 和任务 focusSecs 数据
 // 分析：打断分布、完成率热力、最佳专注时长建议、最佳时段
 
-import 'dart:math' show sqrt, max;
-import '../models/models.dart';
 import '../providers/app_state.dart' show AppState;
 
 // ── 输出数据结构 ──────────────────────────────────────────────────────────────

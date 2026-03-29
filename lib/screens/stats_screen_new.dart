@@ -11,6 +11,7 @@ import '../providers/app_state.dart';
 import '../l10n/l10n.dart';
 import '../widgets/calendar_widgets.dart';
 import '../widgets/deviation_chart.dart';
+import '../widgets/shared_widgets.dart';
 import 'dart:math' show pi, cos, sin, max, min;
 import 'stats_screen.dart' show
     FocusDetailPage,
@@ -28,7 +29,9 @@ enum _CalV { day, week, month, year }
 
 // ─────────────────────────────────────────────────────────────────────────────
 class StatsScreenNew extends StatefulWidget {
-  const StatsScreenNew({super.key});
+  final int enterTick;
+  final double animationFactor; // 0.0 at today/pom, 1.0 at stats, interpolates in between
+  const StatsScreenNew({super.key, required this.enterTick, required this.animationFactor});
   @override
   State<StatsScreenNew> createState() => _StatsScreenNewState();
 }
@@ -37,6 +40,7 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
   _CalV _cv = _CalV.week;
   String _anchor = '';
   String _selected = '';
+  int _enterTick = 0;
 
   @override
   void initState() {
@@ -45,6 +49,15 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
     _anchor = s.todayKey; _selected = _anchor;
     const m = {'day':_CalV.day,'week':_CalV.week,'month':_CalV.month,'year':_CalV.year};
     _cv = m[s.settings.defaultCalView] ?? _CalV.week;
+    _enterTick = widget.enterTick;
+  }
+
+  @override
+  void didUpdateWidget(covariant StatsScreenNew oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enterTick != widget.enterTick) {
+      setState(() => _enterTick = widget.enterTick);
+    }
   }
 
   List<String> get _days {
@@ -166,12 +179,12 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
 
             // ② 标签完成概览 — tall 1-col × 2-row
             _BentoCell(cols: 1, rows: 2,
-              child: _TagBrick(tc: tc, state: state, days: days, actSet: actSet,
+              child: _TagBrick(tc: tc, state: state, days: days, actSet: actSet, animationFactor: widget.animationFactor,
                 onTap: () => _push(_TagPage(state: state, days: days, pLbl: pLbl, tc: tc)))),
 
             // ③ 时段活力 — 1-col
             _BentoCell(cols: 1, rows: 1,
-              child: _VitalityBrick(tc: tc, vit: vit, vitTotal: vitTotal, bestVit: bestVit,
+              child: _VitalityBrick(tc: tc, vit: vit, vitTotal: vitTotal, bestVit: bestVit, animationFactor: widget.animationFactor,
                 onTap: () => _push(_VitalityPage(state: state, days: days, pLbl: pLbl, tc: tc)))),
 
             // ④ 专注时长 — 1-col → 进 FocusDetailPage（完整版）
@@ -185,12 +198,12 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
 
             // ⑤ 标签排行mini — wide (2-col)
             _BentoCell(cols: 2, rows: 1,
-              child: _RankMini(tc: tc, state: state,
+              child: _RankMini(tc: tc, state: state, animationFactor: widget.animationFactor,
                 onTap: () => _push(_RankPage(state: state, days: days, pLbl: pLbl, tc: tc)))),
 
             // ⑥ 完成时间分布 — 1-col
             _BentoCell(cols: 1, rows: 1,
-              child: _TimelineBrick(tc: tc, state: state, days: days,
+              child: _TimelineBrick(tc: tc, state: state, days: days, animationFactor: widget.animationFactor,
                 onTap: () => _push(_CompletionTimelinePage(state: state, days: days, pLbl: pLbl, tc: tc)))),
 
             // ⑦ 偏差分析 — 带缩略图，week/month 显示
@@ -212,7 +225,7 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
 
             // ⑩ 心理分析 + 环境声分析 — 1-col 各占一半，并排
             _BentoCell(cols: 1, rows: 1,
-              child: _PsychBrick(tc: tc, state: state,
+              child: _PsychBrick(tc: tc, state: state, animationFactor: widget.animationFactor,
                 onTap: () => _push(_PsychPage(state: state, tc: tc)))),
 
             _BentoCell(cols: 1, rows: 1,
@@ -227,14 +240,14 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
             // ⑫ 番茄钟深度分析 β — 1-col × 2-row（窄高，像标签砖块）
             if (betaDeepFocusAnalysis(state.settings))
               _BentoCell(cols: 1, rows: 2,
-                child: _DeepFocusBrick(tc: tc, state: state,
+                child: _DeepFocusBrick(tc: tc, state: state, animationFactor: widget.animationFactor,
                   onTap: () => _push(_DeepFocusPage(tc: tc, state: state)))),
 
             // ⑬ 心流指数 — 1-col（独立入口，与番茄钟深度配对）
             _BentoCell(cols: 1, rows: 1,
-              child: _FlowBrick(tc: tc, state: state,
+              child: _FlowBrick(tc: tc, state: state, animationFactor: widget.animationFactor,
                 onTap: () => _push(_FlowDetailPage(tc: tc, state: state)))),
-          ]),
+            ]),
 
           // 屏幕使用分析已移入 Bento Grid
         ]),
@@ -251,35 +264,24 @@ class _StatsScreenNewState extends State<StatsScreenNew> {
       L.get('screens.stats.year'),
     ];
     return Row(children: [
-      // Tab pills
-      Expanded(child: Container(
-        decoration: BoxDecoration(color: Color(tc.brd), borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.all(2),
-        child: Row(children: List.generate(4, (i) {
-          final a = _cv.index == i;
-          return Expanded(child: GestureDetector(
-            onTap: () {
-              if (_cv.index == i) return;
-              HapticFeedback.selectionClick();
-              setState(() { _cv = _CalV.values[i]; if (_cv == _CalV.day) _selected = _anchor; });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOutCubic,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: a ? state.cardColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: a ? [BoxShadow(color: Color(0x18000000), blurRadius: 4, offset: const Offset(0,1))] : null),
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 180),
-                style: TextStyle(fontSize: 12,
-                  color: a ? Color(tc.tx) : Color(tc.ts),
-                  fontWeight: a ? FontWeight.w700 : FontWeight.normal),
-                child: Text(lbs[i], textAlign: TextAlign.center),
-              ))));
-        })),
-      )),
+      // Tab pills - Use unified LiquidSegmentedControl for physical reveal effect
+      Expanded(
+        child: LiquidSegmentedControl(
+          labels: lbs,
+          currentIndex: _cv.index,
+          onValueChanged: (i) {
+            if (_cv.index == i) return;
+            HapticFeedback.selectionClick();
+            setState(() {
+              _cv = _CalV.values[i];
+              if (_cv == _CalV.day) _selected = _anchor;
+            });
+          },
+          tc: tc,
+          width: double.infinity, // Use full width of Expanded
+          height: 36,
+        ),
+      ),
       const SizedBox(width: 8),
       // Share button
       GestureDetector(
@@ -502,41 +504,56 @@ class _StatBrick extends StatelessWidget {
 }
 
 class _VitalityBrick extends StatelessWidget {
-  final ThemeConfig tc; final Map<String,int> vit; final int vitTotal; final MapEntry<String,int>? bestVit; final VoidCallback onTap;
-  const _VitalityBrick({required this.tc,required this.vit,required this.vitTotal,required this.bestVit,required this.onTap});
+  final ThemeConfig tc;
+  final Map<String, int> vit;
+  final int vitTotal;
+  final MapEntry<String, int>? bestVit;
+  final double animationFactor;
+  final VoidCallback onTap;
+  const _VitalityBrick({
+    required this.tc,
+    required this.vit,
+    required this.vitTotal,
+    required this.bestVit,
+    required this.animationFactor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final mx = vitTotal>0 ? [vit['morning']!,vit['afternoon']!,vit['evening']!].reduce((a,b)=>a>b?a:b) : 1;
+    final mx = vitTotal > 0 ? [vit['morning']!, vit['afternoon']!, vit['evening']!].reduce((a, b) => a > b ? a : b) : 1;
     final morning = L.get('screens.statsNew.morning');
     final afternoon = L.get('screens.statsNew.afternoon');
     final evening = L.get('screens.statsNew.evening');
-    final blks = [('morning',morning,Color(0xFFe8982a)),('afternoon',afternoon,Color(0xFF3a90c0)),('evening',evening,Color(0xFF7a5ab8))];
+    final blks = [('morning', morning, Color(0xFFe8982a)), ('afternoon', afternoon, Color(0xFF3a90c0)), ('evening', evening, Color(0xFF7a5ab8))];
 
-    return _BrickShell(tc:tc, accent:const Color(0xFFe8982a), onTap:onTap,
-      child: Padding(padding: const EdgeInsets.fromLTRB(14,14,14,12),
-        child: Column(crossAxisAlignment:CrossAxisAlignment.start, children: [
-          Row(children:[const Text('⚡',style:TextStyle(fontSize:18)),const Spacer(),Icon(Icons.arrow_forward_ios_rounded,size:10,color:Color(tc.tm))]),
-          const SizedBox(height:4),
-          Text(L.get('screens.statsNew.vitality'),style:TextStyle(fontSize:10.5,color:Color(tc.ts))),
-          const SizedBox(height:10),
-          Expanded(child: Row(crossAxisAlignment:CrossAxisAlignment.end, children: blks.map((b) {
-            final cnt = vit[b.$1]??0; final pct = mx>0?cnt/mx:0.0; final isBest = bestVit?.key==b.$1&&cnt>0;
-            return Expanded(child: Padding(padding:const EdgeInsets.symmetric(horizontal:2),
-              child: Column(mainAxisSize:MainAxisSize.min, children:[
-                TweenAnimationBuilder<double>(tween:Tween(begin:0,end:pct.clamp(0.05,1.0)),
-                  duration:const Duration(milliseconds:700),curve:Curves.easeOut,
-                  builder:(_,v,__)=>SizedBox(height:58,child:Align(alignment:Alignment.bottomCenter,
-                    child:FractionallySizedBox(heightFactor:v,
-                      child:Container(decoration:BoxDecoration(color:isBest?b.$3:b.$3.withOpacity(0.4),
-                        borderRadius:const BorderRadius.vertical(top:Radius.circular(4)))))))),
-                const SizedBox(height:4),
-                Text(b.$2,style:TextStyle(fontSize:8,color:isBest?b.$3:Color(tc.tm))),
+    return _BrickShell(tc: tc, accent: const Color(0xFFe8982a), onTap: onTap,
+      child: Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [const Text('⚡', style: TextStyle(fontSize: 18)), const Spacer(), Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(tc.tm))]),
+          const SizedBox(height: 4),
+          Text(L.get('screens.statsNew.vitality'), style: TextStyle(fontSize: 10.5, color: Color(tc.ts))),
+          const SizedBox(height: 10),
+          Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: blks.map((b) {
+            final cnt = vit[b.$1] ?? 0;
+            final pct = mx > 0 ? cnt / mx : 0.0;
+            final isBest = bestVit?.key == b.$1 && cnt > 0;
+            // Use animationFactor to drive the height
+            final currentHeightFactor = (pct * animationFactor).clamp(0.02, 1.0);
+
+            return Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(height: 58, child: Align(alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(heightFactor: currentHeightFactor,
+                    child: Container(decoration: BoxDecoration(color: isBest ? b.$3 : b.$3.withOpacity(0.4),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4))))))),
+                const SizedBox(height: 4),
+                Text(b.$2, style: TextStyle(fontSize: 8, color: isBest ? b.$3 : Color(tc.tm))),
               ])));
           }).toList())),
-          const SizedBox(height:6),
-          Text(bestVit!=null?L.get('screens.statsNew.bestVitality', {'time': _bn(bestVit!.key), 'count': bestVit!.value}):L.get('screens.statsNew.noData'),
-            style:TextStyle(fontSize:9,color:Color(tc.acc))),
+          const SizedBox(height: 6),
+          Text(bestVit != null ? L.get('screens.statsNew.bestVitality', {'time': _bn(bestVit!.key), 'count': bestVit!.value}) : L.get('screens.statsNew.noData'),
+            style: TextStyle(fontSize: 9, color: Color(tc.acc))),
         ])));
   }
   static String _bn(String k) => {
@@ -552,9 +569,16 @@ class _TagBrick extends StatelessWidget {
   final AppState state;
   final List<String> days;
   final Set<String> actSet;
+  final double animationFactor;
   final VoidCallback onTap;
-  const _TagBrick({required this.tc, required this.state, required this.days,
-    required this.actSet, required this.onTap});
+  const _TagBrick({
+    required this.tc,
+    required this.state,
+    required this.days,
+    required this.actSet,
+    required this.animationFactor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -621,7 +645,7 @@ class _TagBrick extends StatelessWidget {
                 final total = periodTotalMap[tag] ?? 0;
                 // 当期完成率（若有当期任务则用当期，否则显示 0%）
                 final rate  = total > 0 ? (done / total * 100).round() : 0;
-                final frac  = done / maxDone;
+                final frac  = (done / maxDone) * animationFactor;
                 return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Container(width: 6, height: 6,
@@ -634,16 +658,12 @@ class _TagBrick extends StatelessWidget {
                       style: TextStyle(fontSize: 8.5, color: Color(tc.ts))),
                   ]),
                   const SizedBox(height: 3),
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: frac.clamp(0.02, 1.0)),
-                    duration: const Duration(milliseconds: 600), curve: Curves.easeOut,
-                    builder: (_, v, __) => FractionallySizedBox(
-                      alignment: Alignment.centerLeft, widthFactor: v,
-                      child: Container(height: 4,
-                        decoration: BoxDecoration(
-                          color: c.withOpacity(0.75),
-                          borderRadius: BorderRadius.circular(2)))),
-                  ),
+                  FractionallySizedBox(
+                    alignment: Alignment.centerLeft, widthFactor: frac.clamp(0.02, 1.0),
+                    child: Container(height: 4,
+                      decoration: BoxDecoration(
+                        color: c.withOpacity(0.75),
+                        borderRadius: BorderRadius.circular(2)))),
                 ]);
               }).toList(),
             )),
@@ -652,47 +672,55 @@ class _TagBrick extends StatelessWidget {
 }
 
 class _RankMini extends StatelessWidget {
-  final ThemeConfig tc; final AppState state; final VoidCallback onTap;
-  const _RankMini({required this.tc,required this.state,required this.onTap});
+  final ThemeConfig tc;
+  final AppState state;
+  final double animationFactor;
+  final VoidCallback onTap;
+  const _RankMini({
+    required this.tc,
+    required this.state,
+    required this.animationFactor,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final sorted = state.tags.where((t)=>state.tagCountsInStats(t)&&state.tagTotalDone(t)>0).toList()
-      ..sort((a,b)=>state.tagTotalDone(b).compareTo(state.tagTotalDone(a)));
+    final sorted = state.tags.where((t) => state.tagCountsInStats(t) && state.tagTotalDone(t) > 0).toList()
+      ..sort((a, b) => state.tagTotalDone(b).compareTo(state.tagTotalDone(a)));
     final top4 = sorted.take(4).toList();
     final mx = top4.isEmpty ? 1 : state.tagTotalDone(top4.first);
-    return _BrickShell(tc:tc, accent:Color(tc.acc2), onTap:onTap,
-      child: Padding(padding:const EdgeInsets.fromLTRB(14,14,14,12),
-        child: Column(crossAxisAlignment:CrossAxisAlignment.start, children:[
-          Row(children:[
-            const Text('📊',style:TextStyle(fontSize:16)),
-            const SizedBox(width:6),
-            Text(L.get('screens.statsNew.completionRank'),style:TextStyle(fontSize:10.5,color:Color(tc.ts))),
+    return _BrickShell(tc: tc, accent: Color(tc.acc2), onTap: onTap,
+      child: Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Text('📊', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 6),
+            Text(L.get('screens.statsNew.completionRank'), style: TextStyle(fontSize: 10.5, color: Color(tc.ts))),
             const Spacer(),
-            Icon(Icons.arrow_forward_ios_rounded,size:10,color:Color(tc.tm)),
+            Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(tc.tm)),
           ]),
-          const SizedBox(height:10),
+          const SizedBox(height: 10),
           if (top4.isEmpty)
-            Text(L.get('screens.statsNew.noData'),style:TextStyle(fontSize:10,color:Color(tc.tm)))
+            Text(L.get('screens.statsNew.noData'), style: TextStyle(fontSize: 10, color: Color(tc.tm)))
           else
-            Row(crossAxisAlignment:CrossAxisAlignment.end, children: top4.asMap().entries.map((e) {
-              final tag=e.value; final c=state.tagColor(tag);
-              final cnt=state.tagTotalDone(tag); final frac=mx>0?cnt/mx:0.0;
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: top4.asMap().entries.map((e) {
+              final tag = e.value;
+              final c = state.tagColor(tag);
+              final cnt = state.tagTotalDone(tag);
+              final frac = (mx > 0 ? cnt / mx : 0.0) * animationFactor;
               return Expanded(child: Padding(
-                padding:const EdgeInsets.symmetric(horizontal:3),
-                child: Column(children:[
-                  TweenAnimationBuilder<double>(
-                    tween:Tween(begin:0,end:frac.clamp(0.05,1.0)),
-                    duration:Duration(milliseconds:400+e.key*70), curve:Curves.easeOut,
-                    builder:(_,v,__)=>SizedBox(height:40,
-                      child:Align(alignment:Alignment.bottomCenter,
-                        child:FractionallySizedBox(heightFactor:v,
-                          child:Container(decoration:BoxDecoration(
-                            color:c, borderRadius:const BorderRadius.vertical(top:Radius.circular(3)))))))),
-                  const SizedBox(height:4),
-                  Text('$cnt',style:TextStyle(fontSize:9,fontWeight:FontWeight.w700,color:Color(tc.tx))),
-                  const SizedBox(height:2),
-                  Text(tag,style:TextStyle(fontSize:8,color:c),
-                    maxLines:1,overflow:TextOverflow.ellipsis,textAlign:TextAlign.center),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Column(children: [
+                  SizedBox(height: 40,
+                    child: Align(alignment: Alignment.bottomCenter,
+                      child: FractionallySizedBox(heightFactor: frac.clamp(0.05, 1.0),
+                        child: Container(decoration: BoxDecoration(
+                          color: c, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))))))),
+                  const SizedBox(height: 4),
+                  Text('$cnt', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(tc.tx))),
+                  const SizedBox(height: 2),
+                  Text(tag, style: TextStyle(fontSize: 8, color: c),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
                 ]),
               ));
             }).toList()),
@@ -1191,9 +1219,15 @@ class _TimelineBrick extends StatelessWidget {
   final ThemeConfig tc;
   final AppState state;
   final List<String> days;
+  final double animationFactor;
   final VoidCallback onTap;
-  const _TimelineBrick({required this.tc, required this.state,
-      required this.days, required this.onTap});
+  const _TimelineBrick({
+    required this.tc,
+    required this.state,
+    required this.days,
+    required this.animationFactor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1236,11 +1270,11 @@ class _TimelineBrick extends StatelessWidget {
             child: Row(crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(24, (h) {
                 final cnt = hourCount[h];
-                final frac = cnt / maxH;
+                final frac = (cnt / maxH) * animationFactor;
                 return Expanded(child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 0.4),
                   child: FractionallySizedBox(
-                    heightFactor: (frac * 0.9 + 0.1).clamp(0.1, 1.0),
+                    heightFactor: (frac * 0.9 + 0.1 * animationFactor).clamp(0.01, 1.0),
                     alignment: Alignment.bottomCenter,
                     child: Container(decoration: BoxDecoration(
                       color: barColor(h).withOpacity(cnt > 0 ? 0.75 : 0.15),
@@ -1840,8 +1874,15 @@ class _IgnorePageState extends State<_IgnorePage> {
 class _PsychBrick extends StatelessWidget {
   final ThemeConfig tc;
   final AppState state;
+  final double animationFactor;
   final VoidCallback onTap;
-  const _PsychBrick({required this.tc, required this.state, required this.onTap});
+  const _PsychBrick({
+    required this.tc,
+    required this.state,
+    required this.animationFactor,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     final profile = PsychAnalyzer.analyze(state);
@@ -1870,9 +1911,9 @@ class _PsychBrick extends StatelessWidget {
                   fontWeight: FontWeight.w600)),
           ]),
           const Spacer(),
-          // Procrastination meter
+          // Procrastination meter driven by animationFactor
           SizedBox(width: 40, height: 40, child: CircularProgressIndicator(
-            value: profile.procrastinationIndex / 100,
+            value: (profile.procrastinationIndex / 100) * animationFactor,
             backgroundColor: Color(tc.brd),
             valueColor: AlwaysStoppedAnimation(procrastColor),
             strokeWidth: 5,
@@ -2576,8 +2617,14 @@ class _HabitCalRow extends StatelessWidget {
 class _FlowBrick extends StatefulWidget {
   final ThemeConfig tc;
   final AppState state;
+  final double animationFactor;
   final VoidCallback onTap;
-  const _FlowBrick({required this.tc, required this.state, required this.onTap});
+  const _FlowBrick({
+    required this.tc,
+    required this.state,
+    required this.animationFactor,
+    required this.onTap,
+  });
   @override State<_FlowBrick> createState() => _FlowBrickState();
 }
 
@@ -2639,7 +2686,7 @@ class _FlowBrickState extends State<_FlowBrick> {
           else ...[
             Row(crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic, children: [
-              Text('$score', style: TextStyle(
+              Text('${(score * widget.animationFactor).round()}', style: TextStyle(
                   fontSize: 24, fontWeight: FontWeight.w800,
                   color: phaseColor, height: 1.0)),
               const SizedBox(width: 4),
@@ -2650,12 +2697,12 @@ class _FlowBrickState extends State<_FlowBrick> {
                 color: phaseColor.withOpacity(0.8),
                 fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
-            // Sparkline
+            // Sparkline driven by animationFactor
             if (_sparkValues.length >= 2)
               SizedBox(height: 20,
                 child: CustomPaint(
                   painter: _MiniSparkPainter(
-                    values: _sparkValues, color: phaseColor),
+                    values: _sparkValues, color: phaseColor, animationFactor: widget.animationFactor),
                   size: Size.infinite)),
           ],
         ])));
@@ -2665,7 +2712,8 @@ class _FlowBrickState extends State<_FlowBrick> {
 class _MiniSparkPainter extends CustomPainter {
   final List<double> values;
   final Color color;
-  const _MiniSparkPainter({required this.values, required this.color});
+  final double animationFactor;
+  const _MiniSparkPainter({required this.values, required this.color, required this.animationFactor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2675,22 +2723,40 @@ class _MiniSparkPainter extends CustomPainter {
       ..color = color ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke ..strokeCap = StrokeCap.round;
     final path = Path();
+    
+    // Calculate how many segments to draw based on animationFactor
+    final limit = (n - 1) * animationFactor;
+    
     for (int i = 0; i < n; i++) {
+      if (i > limit + 1) break;
+      
       final x = i / (n - 1) * size.width;
       final y = (1.0 - values[i]) * size.height;
-      if (i == 0) path.moveTo(x, y);
-      else {
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
         final px = (i - 1) / (n - 1) * size.width;
         final py = (1.0 - values[i - 1]) * size.height;
-        final cx = (px + x) / 2;
-        path.cubicTo(cx, py, cx, y, x, y);
+        
+        if (i <= limit) {
+          final cx = (px + x) / 2;
+          path.cubicTo(cx, py, cx, y, x, y);
+        } else {
+          // Interpolate the last segment
+          final t = (limit - (i - 1));
+          final targetX = px + (x - px) * t;
+          final targetY = py + (y - py) * t;
+          final cx = (px + targetX) / 2;
+          path.cubicTo(cx, py, cx, targetY, targetX, targetY);
+        }
       }
     }
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(_MiniSparkPainter o) => o.values != values;
+  bool shouldRepaint(_MiniSparkPainter o) => o.values != values || o.animationFactor != animationFactor;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2803,8 +2869,14 @@ class _FlowDetailPageState extends State<_FlowDetailPage> {
 class _DeepFocusBrick extends StatelessWidget {
   final ThemeConfig tc;
   final AppState state;
+  final double animationFactor;
   final VoidCallback onTap;
-  const _DeepFocusBrick({required this.tc, required this.state, required this.onTap});
+  const _DeepFocusBrick({
+    required this.tc,
+    required this.state,
+    required this.animationFactor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2860,10 +2932,10 @@ class _DeepFocusBrick extends StatelessWidget {
                 final maxV = report.hourlyFocusMins
                     .reduce((a, b) => a > b ? a : b);
                 if (maxV == 0) return const Expanded(child: SizedBox());
-                final frac = (v / maxV).clamp(0.0, 1.0);
+                final frac = (v / maxV).clamp(0.0, 1.0) * animationFactor;
                 final isBest = h == report.bestHour;
                 return Expanded(child: Container(
-                  height: frac * 26 + 2,
+                  height: frac * 26 + (2 * animationFactor),
                   margin: const EdgeInsets.symmetric(horizontal: 0.5),
                   decoration: BoxDecoration(
                     color: isBest

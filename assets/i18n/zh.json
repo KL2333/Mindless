@@ -713,9 +713,9 @@
     "stats": {
       "title": "统计",
       "today": "今日",
-      "week": "周视图",
-      "month": "月视图",
-      "year": "年视图",
+      "week": "周",
+      "month": "月",
+      "year": "年",
       "calendar": "日历热力图",
       "weekCal": "周日历",
       "monthCal": "月日历",
@@ -1067,7 +1067,20 @@
       "resume": "继续",
       "shortBreak": "短休",
       "skip": "跳过",
-      "start": "开始"
+      "start": "开始",
+      "strictLocked": "严格模式进行中，当前操作已锁定",
+      "modeLocked": "锁定中",
+      "modeSwitchHint": "点按切换",
+      "normalModeTitle": "正常模式",
+      "normalModeDesc": "自由开始与暂停，保留原有使用习惯",
+      "semiStrictModeTitle": "半严格模式",
+      "semiStrictModeDesc": "翻转手机即开计时，拿起会打断并重新验证",
+      "strictModeTitle": "严格模式",
+      "strictModeDesc": "开始后自动进入息屏显示，并锁定核心控制按钮",
+      "semiStrictWaitingTitle": "请翻转手机",
+      "semiStrictWaitingBody": "{{seconds}} 秒内翻转手机后立即开始专注",
+      "semiStrictWaitingHint": "轻触任意位置取消这次开始",
+      "semiStrictStartCancelled": "未检测到翻转，已取消本轮开始"
     },
     "pomHistory": {
       "title": "番茄钟历史",
@@ -1436,10 +1449,10 @@
         "aboutContent": "致敬《星际穿越》。这不仅是一个主题，更是一个基于广义相对论方程的实时黑洞光线追踪演示。"
       },
       "defaultCalViewLabels": {
-        "day": "日视图",
-        "week": "周视图",
-        "month": "月视图",
-        "year": "年视图"
+        "day": "日",
+        "week": "周",
+        "month": "月",
+        "year": "年"
       },
       "dynamicThemeDesc": "基于当前壁纸或系统色调自动生成配色",
       "seasonalThemeSubtitle": "跟随季节与节日自动变换的主题",
@@ -1630,6 +1643,8 @@
         }
       },
       "changelogData": {
+        "gamma_001": "版本大升级 γ.001：物理质感交互革命\n- 【交互革命】实现全应用「物理揭晓」式页签切换，滑块充当物理视窗，视觉手感高度统一\n- 【动态仪表盘】统计页全面动态化，图表、趋势线、圆环进度随 Dock 滑动实时驱动播放\n- 【个性化文案】新增关于页文案自定义功能，支持修改短句与页脚，默认贯彻「无脑 无用」哲学\n- 【架构升级】统一 LiquidSegmentedControl 组件，规范统计页面「日周月年」文本显示",
+        "beta_0_085": "重构 i18n 核心架构，引入 Headless UI 隔离层\n实现多级回退机制，彻底解决缺失翻译显示原始变量名的问题\n补全 70+ 处缺失的翻译条目，提升多语言覆盖度\n建立自动化 i18n 校验机制，保障后续版本稳定性",
         "beta_0_084": "修复了国际化(i18n)路径解析逻辑：移除了错误的 themes. 前缀以匹配 JSON 结构\n重构了节日(Festivals)翻译结构：将节日翻译移至 screens.festivals 顶层路径以解决 UI 显示原始键名的问题\n修复了路线图(Roadmap)翻译路径：确保 roadmapData 的层级结构与代码调用一致\n补全了缺失的翻译项：包括天气背景设置、路线图板块标题及世界防治结核病日详情",
         "beta_0_083": "修复了壁纸透明度架构（最终版）：移除了全局 Opacity 包裹层；文字/图标不再变淡\n增加了 AppState surfaceOpacity/cardColor/bgColor 辅助方法；有壁纸时自动应用透明度，无壁纸时恒为 1.0\n修复了无壁纸时的黑屏问题：app_theme 的 scaffoldBackgroundColor 使用 Color(t.bg)；main.dart 直接返回 uiContent 而不经过 Opacity\nsettings_screen 使用 Color(tc.bg) 背景（不透明路由）以避免壁纸透出并消除黑色过渡\n批量更新各界面：Color(tc.card/bg) → state.cardColor/bgColor；透明度仅应用于表面，文字颜色保持完全不透明",
         "beta_0_082": "重构了透明度架构（第三次尝试）：有壁纸时，Stack=[Layer0 壁纸 100%]+[Layer1 Opacity(透明度, 所有 UI)]+[Layer2 天气粒子]\n无壁纸时，直接返回 Scaffold（无 Opacity）以实现零开销\n天气粒子层移出 Opacity（Layer2）使其不受影响；还原了 today/stats/pomodoro/quadrant 中的透明补丁\n更新了设置文案：数值越低越透明；卡片/AppBar/文字会同步变淡并透出壁纸；100% 为完全不透明",

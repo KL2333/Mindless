@@ -1,6 +1,5 @@
 // lib/widgets/timeline_clock.dart
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../providers/app_state.dart';
 

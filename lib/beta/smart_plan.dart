@@ -18,8 +18,6 @@
 
 import '../models/models.dart';
 import '../services/pom_deep_analysis.dart';
-import '../services/environment_sound_service.dart';
-import '../services/focus_quality_service.dart';
 import '../providers/app_state.dart';
 import '../l10n/l10n.dart';
 import 'usage_stats_service.dart';
@@ -645,10 +643,10 @@ class SmartPlan {
       insights.add(Insight(
         icon: '📅',
         title: L.get('screens.today.smartPlan.insights.weekdayEfficiencyTitle', {
-          'best': strongDay!, 'worst': weakDay!,
+          'best': strongDay, 'worst': weakDay,
         }),
         body: L.get('screens.today.smartPlan.insights.weekdayEfficiencyBody', {
-          'best': strongDay!, 'worst': weakDay!,
+          'best': strongDay, 'worst': weakDay,
         }),
         confidence: Confidence.medium, source: InsightSource.task,
       ));
@@ -869,7 +867,7 @@ class SmartPlan {
       ));
       // Also factor noise into HPI adjustment (noisy env -5 pts)
       if (hpi != null && isNoisy) {
-        hpi = (hpi! - 5).clamp(0, 100);
+        hpi = (hpi - 5).clamp(0, 100);
       }
     }
 

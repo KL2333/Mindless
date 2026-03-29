@@ -348,6 +348,8 @@ class AppState extends ChangeNotifier {
   void setTopBarOffset(double val) { settings.topBarOffset = val; _save(); }
   void setGlassEffectIntensity(double val) { settings.glassEffectIntensity = val; _save(); }
   void setAppName(String name) { settings.appName = name.isEmpty ? '流水账' : name; _save(); }
+  void setAboutShortText(String text) { settings.aboutShortText = text; _save(); }
+  void setAboutFooterText(String text) { settings.aboutFooterText = text; _save(); }
   void toggleShowPomodoro() { settings.showPomodoro = !settings.showPomodoro; _save(); }
   void setClockStyle(String s) { settings.clockStyle = s; _save(); }
   void setDefaultCalView(String v) { settings.defaultCalView = v; _save(); }
@@ -364,7 +366,6 @@ class AppState extends ChangeNotifier {
       case 'smartPlan':         settings.betaSmartPlan         = val; break;
       case 'usageStats':        settings.betaUsageStats        = val; break;
       case 'taskGravity':       settings.betaTaskGravity       = val; break;
-      case 'livingIsland':      settings.betaLivingIsland      = val; break;
       case 'statsNewUI':        settings.betaStatsNewUI        = val; break;
       case 'deepFocusAnalysis': settings.betaDeepFocusAnalysis = val; break;
       case 'ambientFx':         settings.betaAmbientFx         = val; break;
@@ -489,9 +490,9 @@ class AppState extends ChangeNotifier {
 
   void updatePomSettings({int? focusMins, int? breakMins, int? longBreakMins,
       int? longBreakInterval, bool? autoNext, bool? trackTime, bool? showProgress,
-      bool? showRuler, double? rulerTopFrac, double? rulerHeightFrac,
-      double? rulerLeft, double? rulerWidth,
-      bool? alarmSound, bool? alarmVibrate}) {
+      String? disciplineMode, bool? showRuler, double? rulerTopFrac,
+      double? rulerHeightFrac, double? rulerLeft, double? rulerWidth,
+      bool? alarmSound, bool? alarmVibrate, bool? persistentVibrate}) {
     if (focusMins != null) settings.pom.focusMins = focusMins;
     if (breakMins != null) settings.pom.breakMins = breakMins;
     if (longBreakMins != null) settings.pom.longBreakMins = longBreakMins;
@@ -499,6 +500,7 @@ class AppState extends ChangeNotifier {
     if (autoNext != null) settings.pom.autoNext = autoNext;
     if (trackTime != null) settings.pom.trackTime = trackTime;
     if (showProgress != null) settings.pom.showProgress = showProgress;
+    if (disciplineMode != null) settings.pom.disciplineMode = disciplineMode;
     if (showRuler != null) settings.pom.showRuler = showRuler;
     if (rulerTopFrac != null) settings.pom.rulerTopFrac = rulerTopFrac.clamp(0.05, 0.60);
     if (rulerHeightFrac != null) settings.pom.rulerHeightFrac = rulerHeightFrac.clamp(0.15, 0.80);
@@ -506,6 +508,7 @@ class AppState extends ChangeNotifier {
     if (rulerWidth != null) settings.pom.rulerWidth = rulerWidth.clamp(16.0, 60.0);
     if (alarmSound != null) settings.pom.alarmSound = alarmSound;
     if (alarmVibrate != null) settings.pom.alarmVibrate = alarmVibrate;
+    if (persistentVibrate != null) settings.pom.persistentVibrate = persistentVibrate;
     if (!engine.running) engine.reinit(settings.pom);
     _save();
   }

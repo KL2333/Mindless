@@ -80,34 +80,43 @@ class DistractionDetector {
     ];
     final msg = messages[(_alertCount - 1).clamp(0, messages.length - 1)];
 
-    // 先尝试通过插件发送，若失败则通过原生通道降级
+    // 触发原生全屏通知（如果支持）
     try {
-      await _notif?.show(
-        _notifId,
-        '⚠ 专注提醒',
-        msg,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'lsz_distraction_alert',
-            '专注干扰提醒',
-            channelDescription: '检测到娱乐App时发送提醒',
-            importance: Importance.high,
-            priority: Priority.high,
-            onlyAlertOnce: false,
-            autoCancel: true,
-            icon: '@mipmap/ic_launcher',
-          ),
-        ),
-      );
+      await _ch.invokeMethod('showFullscreenDistraction', {
+        'appName': name,
+        'count': _alertCount,
+        'message': msg,
+      });
     } catch (_) {
-      // 插件损坏时降级到原生通道
+      // 降级到普通通知
       try {
-        await _repairCh.invokeMethod('showNative', {
-          'id': _notifId,
-          'title': '⚠ 专注提醒',
-          'body': msg,
-        });
-      } catch (_) {}
+        await _notif?.show(
+          _notifId,
+          '⚠ 专注提醒',
+          msg,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'lsz_distraction_alert',
+              '专注干扰提醒',
+              channelDescription: '检测到娱乐App时发送提醒',
+              importance: Importance.high,
+              priority: Priority.high,
+              onlyAlertOnce: false,
+              autoCancel: true,
+              icon: '@mipmap/ic_launcher',
+            ),
+          ),
+        );
+      } catch (_) {
+        // 插件损坏时降级到原生通道
+        try {
+          await _repairCh.invokeMethod('showNative', {
+            'id': _notifId,
+            'title': '⚠ 专注提醒',
+            'body': msg,
+          });
+        } catch (_) {}
+      }
     }
   }
 

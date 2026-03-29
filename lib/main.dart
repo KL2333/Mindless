@@ -14,7 +14,6 @@ import 'l10n/l10n.dart';
 import 'screens/today_screen.dart';
 import 'screens/search_screen.dart';
 import 'services/festival_calendar.dart';
-import 'screens/quadrant_screen.dart';
 import 'screens/stats_screen_new.dart';
 import 'screens/pomodoro_screen.dart';
 import 'screens/settings_screen.dart';
@@ -170,6 +169,38 @@ class LiuShuiZhangApp extends StatelessWidget {
   }
 }
 
+class _DockRectClipper extends CustomClipper<Path> {
+  final double left;
+  final double width;
+  const _DockRectClipper({required this.left, required this.width});
+
+  @override
+  Path getClip(Size size) =>
+      Path()..addRect(Rect.fromLTWH(left, 0, width, size.height));
+
+  @override
+  bool shouldReclip(covariant _DockRectClipper oldClipper) =>
+      oldClipper.left != left || oldClipper.width != width;
+}
+
+class _InverseDockRectClipper extends CustomClipper<Path> {
+  final double left;
+  final double width;
+  const _InverseDockRectClipper({required this.left, required this.width});
+
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRect(Rect.fromLTWH(left, 0, width, size.height));
+  }
+
+  @override
+  bool shouldReclip(covariant _InverseDockRectClipper oldClipper) =>
+      oldClipper.left != left || oldClipper.width != width;
+}
+
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
   @override
@@ -180,13 +211,64 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   int _tab = 0;
   int _prevTab = 0;
   bool _notifRequested = false;
+  double _pageOffset = 0.0;
+  late final AnimationController _dockCtrl;
+  Animation<double>? _dockTween;
+  int _statsEnterTick = 0;
   Timer? _rolloverTimer;
   String _lastAppDate = '';
   AppLifecycleListener? _lifecycleListener;
 
+  Widget _buildPreloadedPages({
+    required List<Widget> screens,
+    required int activeIndex,
+    required double pageOffset,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        if (w <= 0) {
+          return const SizedBox.shrink();
+        }
+        final clampedOffset = pageOffset.clamp(0.0, (screens.length - 1).toDouble());
+        return ClipRect(
+          child: Stack(
+            children: List.generate(screens.length, (i) {
+              final dx = (i - clampedOffset) * w;
+              return Transform.translate(
+                offset: Offset(dx, 0),
+                child: SizedBox.expand(
+                  child: IgnorePointer(
+                    ignoring: i != activeIndex,
+                    child: RepaintBoundary(
+                      child: TickerMode(
+                        enabled: i == activeIndex,
+                        child: screens[i],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _pageOffset = _tab.toDouble();
+    _dockCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    )..addListener(() {
+        if (!mounted) return;
+        final t = _dockTween;
+        if (t == null) return;
+        setState(() => _pageOffset = t.value);
+      });
     _lastAppDate = AppState.appDateKey(DateTime.now());
     _rolloverTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       final newDate = AppState.appDateKey(DateTime.now());
@@ -199,7 +281,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     AppState.switchToPomodoroTab = () {
       if (!mounted) return;
       final state = context.read<AppState>();
-      final pomIdx = state.settings.showPomodoro ? 3 : -1;
+      final pomIdx = state.settings.showPomodoro ? 2 : -1;
       if (pomIdx >= 0) _switchTab(pomIdx);
     };
     // Catch up pomodoro timer after screen-on / app resume
@@ -311,6 +393,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   void dispose() {
     _rolloverTimer?.cancel();
     _lifecycleListener?.dispose();
+    _dockCtrl.dispose();
     AppState.switchToPomodoroTab = null;
     WeatherService.stop();
     super.dispose();
@@ -318,9 +401,19 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
   void _switchTab(int idx) {
     CrashLogger.tap('NavTab', 'tab $idx (from $_tab)');
-    if (idx == _tab) return;
+    if (idx == _tab && (_pageOffset - idx).abs() < 0.001) return;
     HapticFeedback.selectionClick();
-    setState(() { _prevTab = _tab; _tab = idx; });
+    _prevTab = _tab;
+    _tab = idx;
+    if (idx == 1) {
+      _statsEnterTick++;
+    }
+    _dockCtrl.stop();
+    _dockTween = Tween<double>(
+      begin: _pageOffset,
+      end: idx.toDouble(),
+    ).animate(CurvedAnimation(parent: _dockCtrl, curve: Curves.easeOutCubic));
+    _dockCtrl.forward(from: 0);
   }
 
   @override
@@ -338,21 +431,22 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     final state = context.watch<AppState>();
     final tc = state.themeConfig;
     final showPom = state.settings.showPomodoro;
+    final safePageOffset = _pageOffset.clamp(0.0, (showPom ? 2.0 : 1.0));
 
     final screens = [
       const TodayScreen(),
-      const QuadrantScreen(),
-      const StatsScreenNew(),   // β Bento UI 升为默认美术
+      StatsScreenNew(
+        enterTick: _statsEnterTick,
+        animationFactor: (1.0 - (safePageOffset - 1.0).abs()).clamp(0.0, 1.0),
+      ),
       if (showPom) const PomodoroScreen(),
     ];
     final effectiveTab = _tab.clamp(0, screens.length - 1);
     final pending = state.pendingCount;
     final total = state.tasks.length;
 
-    // Pomodoro tab index (3 if shown, -1 if hidden)
-    final pomTabIdx = showPom ? 3 : -1;
-    final pomRunning = state.engine.running;
-    final showBanner = pomRunning && effectiveTab != pomTabIdx && showPom;
+    // Pomodoro tab index (2 if shown, -1 if hidden)
+    final pomTabIdx = showPom ? 2 : -1;
 
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
@@ -399,12 +493,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(2)))),
                   ],
                   const Spacer(),
-                  if (showBanner)
-                    Expanded(
-                      child: _PomBanner(
-                          pom: state.engine, tc: tc,
-                          onTap: () => _switchTab(pomTabIdx))),
-                  if (!showBanner) const SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   GestureDetector(
                     onTap: () => Navigator.push(context, PageRouteBuilder(
                       transitionDuration: const Duration(milliseconds: 340),
@@ -445,10 +534,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                     color: Color(tc.acc).withOpacity(0.4),
                     minHeight: 1.5)),
               // Screen content
-              Expanded(child: _TabBody(
-                index: effectiveTab,
-                prevIndex: _prevTab,
-                children: screens,
+              Expanded(child: RepaintBoundary(
+                child: _buildPreloadedPages(
+                  screens: screens,
+                  activeIndex: effectiveTab,
+                  pageOffset: safePageOffset,
+                ),
               )),
             ])),
           ]),
@@ -480,32 +571,14 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       extendBody: true, // Allow content to bleed under bottom bar
       extendBodyBehindAppBar: true, // Allow content to bleed under top bar
       appBar: _buildAppBar(state, tc, pending, total),
-      body: Column(
-        children: [
-          // Banner needs a bit of spacing if appbar is floating
-          const SizedBox(height: 10),
-          // ── In-app pomodoro banner ─────────────────────────
-          AnimatedSize(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeInOutCubic,
-            child: showBanner
-                ? _PomBanner(
-                    pom: state.engine,
-                    tc: tc,
-                    onTap: () => _switchTab(pomTabIdx),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          Expanded(
-            child: _TabBody(
-              index: effectiveTab,
-              prevIndex: _prevTab,
-              children: screens,
-            ),
-          ),
-        ],
+      body: RepaintBoundary(
+        child: _buildPreloadedPages(
+          screens: screens,
+          activeIndex: effectiveTab,
+          pageOffset: safePageOffset,
+        ),
       ),
-      bottomNavigationBar: _buildNavBar(tc, showPom, effectiveTab),
+      bottomNavigationBar: _buildNavBar(tc, showPom, effectiveTab, safePageOffset),
     );
 
     return uiContent;
@@ -531,7 +604,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     return PreferredSize(
       preferredSize: Size.fromHeight(topPad + barHeight + 12),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0), // Reduced from 8 to 4 to move AppBar up
         child: LiquidGlassRefractor(
           borderRadius: 45.0, // 严格遵循边缘曲率参数
           baseColor: state.chromeBarColor(tc),
@@ -605,7 +678,15 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildNavBar(ThemeConfig tc, bool showPom, int effectiveTab) {
+  double _dragStartX = 0.0;
+  double _dragStartPage = 0.0;
+
+  Widget _buildNavBar(
+    ThemeConfig tc,
+    bool showPom,
+    int effectiveTab,
+    double pageOffset,
+  ) {
     final state = context.watch<AppState>();
     final pomRunning = state.engine.running;
     final isFocusMode = pomRunning && state.engine.mode == PomMode.focus;
@@ -613,7 +694,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     final capColor = isFocusMode ? Color(tc.acc)
         : isBreakMode ? Color(tc.acc2)
         : Color(tc.na);
-    final capTextColor = isFocusMode || isBreakMode ? Color(tc.nt) : Color(tc.nt);
 
     IconData getIcon(IconData normal, IconData special) {
       return state.settings.theme == 'black_hole' ? special : normal;
@@ -624,11 +704,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         icon: getIcon(Icons.today_outlined, Icons.explore_outlined),
         active: getIcon(Icons.today, Icons.explore),
         label: L.today
-      ),
-      (
-        icon: getIcon(Icons.grid_view_outlined, Icons.radar_outlined),
-        active: getIcon(Icons.grid_view, Icons.radar),
-        label: L.quadrant
       ),
       (
         icon: getIcon(Icons.bar_chart_outlined, Icons.auto_awesome_outlined),
@@ -646,64 +721,199 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), // Floating above bottom edge
-        child: LiquidGlassRefractor(
-          borderRadius: 45.0, // 严格遵循边缘曲率参数
-          baseColor: state.chromeNavBarColor(tc),
-          intensity: state.settings.glassEffectIntensity,
-          child: SizedBox(
-            height: 64,
-            child: Row(children: items.asMap().entries.map((e) {
-              final i = e.key; final item = e.value; final active = effectiveTab == i;
-              return Expanded(child: GestureDetector(
-                onTap: () => _switchTab(i),
-                behavior: HitTestBehavior.opaque,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: active ? 1.0 : 0.0),
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOutCubic,
-                  builder: (_, v, __) {
-                    final pillColor = active && pomRunning ? capColor : Color(tc.na);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 5),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeInOutCubic,
-                        decoration: BoxDecoration(
-                          color: active ? pillColor.withOpacity(v) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                          Icon(active ? item.active : item.icon, size: 22,
-                            color: Color.lerp(Color(tc.ts), active && pomRunning ? capTextColor : Color(tc.nt), v)!),
-                          // Label slides in when active
-                          ClipRect(
-                            child: AnimatedAlign(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: active ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 250),
-                              curve: Curves.easeInOutCubic,
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 6, right: 4),
-                                child: Text(item.label, style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color.lerp(Color(tc.ts), active && pomRunning ? capTextColor : Color(tc.nt), v),
-                                  fontWeight: FontWeight.w700),
-                                  maxLines: 1, softWrap: false),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final barWidth = constraints.maxWidth;
+            final itemWidth = barWidth / items.length;
+            final maxScrollRange = barWidth - itemWidth;
+            final indicatorLeft = pageOffset * (maxScrollRange / (items.length - 1));
+            final focusedIndex = pageOffset.round().clamp(0, items.length - 1);
+            
+            return GestureDetector(
+              onPanCancel: () {
+                final targetPage = _pageOffset.round().clamp(0, items.length - 1);
+                _switchTab(targetPage);
+              },
+              onPanUpdate: (details) {
+                // 1. 获取手指在 Dock 内的绝对局部 X 坐标
+                double fingerX = details.localPosition.dx;
+
+                // 2. 计算目标左边距，让冰块中心对齐指尖
+                double targetLeft = fingerX - (itemWidth / 2);
+                double clampedPos = targetLeft.clamp(0.0, maxScrollRange);
+
+                // 3. 映射到“页面索引”的偏移量（0..n-1），用于驱动 Dock 高亮与指示器
+                double scrollRatio = maxScrollRange == 0 ? 0.0 : (clampedPos / maxScrollRange);
+                final nextOffset = (scrollRatio * (items.length - 1)).clamp(0.0, (items.length - 1).toDouble());
+
+                _dockCtrl.stop();
+                setState(() {
+                  _pageOffset = nextOffset;
+                  final newTab = _pageOffset.round().clamp(0, items.length - 1);
+                  if (newTab != _tab) {
+                    _prevTab = _tab;
+                    _tab = newTab;
+                  }
+                });
+              },
+              onPanEnd: (details) {
+                // 结束滑动时，平滑吸附到最近的页面
+                final targetPage = _pageOffset.round().clamp(0, items.length - 1);
+                _switchTab(targetPage);
+              },
+              child: LiquidGlassRefractor(
+                borderRadius: 45.0,
+                baseColor: state.chromeNavBarColor(tc),
+                intensity: state.settings.glassEffectIntensity,
+                child: SizedBox(
+                  height: 64,
+                  child: Stack(
+                    children: [
+                      // ── Optical Liquid Glass Indicator (Top Layer) ──────────────────────────
+                      Positioned(
+                        left: indicatorLeft,
+                        top: 4,
+                        bottom: 4,
+                        child: IgnorePointer(
+                          child: RepaintBoundary(
+                            child: Container(
+                              width: itemWidth,
+                              padding: const EdgeInsets.all(3),
+                              child: Stack(
+                                children: [
+                                  // 1. 核心光学层：无阴影、表面张力质感
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(19),
+                                      // 彻底去掉外部阴影 BoxShadow，追求极简通透
+                                      boxShadow: const [],
+                                      // 模拟液体表面张力的高级质感：使用极其细微的边框捕捉环境光
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.25),
+                                        width: 0.8,
+                                      ),
+                                      // 利用渐变营造“液体厚度”，中心 0.02 通透度
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Colors.white.withOpacity(0.12), // 顶部反射
+                                          Colors.white.withOpacity(0.02), // 中心通透
+                                          Colors.white.withOpacity(0.08), // 底部反光
+                                        ],
+                                        stops: const [0.0, 0.4, 1.0],
+                                      ),
+                                    ),
+                                    // 2. 内部高亮线：营造 Liquid 边缘的弧度感
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(19),
+                                        border: Border(
+                                          top: BorderSide(
+                                            color: Colors.white.withOpacity(0.15),
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ]),
+                        ),
                       ),
-                    );
-                  },
+
+                      ClipPath(
+                        clipper: _InverseDockRectClipper(
+                          left: indicatorLeft,
+                          width: itemWidth,
+                        ),
+                        child: Row(
+                          children: items.asMap().entries.map((e) {
+                            final i = e.key;
+                            final item = e.value;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => _switchTab(i),
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        item.icon,
+                                        size: 24,
+                                        color: Color(tc.ts),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Opacity(
+                                        opacity: 0,
+                                        child: Text(
+                                          item.label,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      ClipPath(
+                        clipper: _DockRectClipper(
+                          left: indicatorLeft,
+                          width: itemWidth,
+                        ),
+                        child: Row(
+                          children: items.asMap().entries.map((e) {
+                            final i = e.key;
+                            final item = e.value;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => _switchTab(i),
+                                behavior: HitTestBehavior.opaque,
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        item.active,
+                                        size: 24,
+                                        color: pomRunning ? capColor : Color(tc.tx),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        item.label,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: pomRunning ? capColor : Color(tc.tx),
+                                        ),
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ));
-            }).toList()),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -727,11 +937,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         icon: getIcon(Icons.today_outlined, Icons.explore_outlined),
         active: getIcon(Icons.today, Icons.explore),
         label: L.today
-      ),
-      (
-        icon: getIcon(Icons.grid_view_outlined, Icons.radar_outlined),
-        active: getIcon(Icons.grid_view, Icons.radar),
-        label: L.quadrant
       ),
       (
         icon: getIcon(Icons.bar_chart_outlined, Icons.auto_awesome_outlined),
@@ -796,217 +1001,6 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             }),
           ]),
         ),
-      ),
-    );
-  }
-}
-
-// ── In-app Pomodoro Banner ────────────────────────────────────────────────────
-// Shows at the top of the body when a pomodoro is running and the user is on
-// another tab. Ticks every second. Tapping navigates to the pomodoro tab.
-class _PomBanner extends StatefulWidget {
-  final PomEngine pom;
-  final ThemeConfig tc;
-  final VoidCallback onTap;
-  const _PomBanner({required this.pom, required this.tc, required this.onTap});
-
-  @override
-  State<_PomBanner> createState() => _PomBannerState();
-}
-
-class _PomBannerState extends State<_PomBanner> {
-  Timer? _ticker;
-  int _secsLeft = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _secsLeft = widget.pom.secsLeft;
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        _secsLeft = widget.pom.secsLeft;
-      });
-    });
-  }
-
-  @override
-  void didUpdateWidget(_PomBanner old) {
-    super.didUpdateWidget(old);
-    _secsLeft = widget.pom.secsLeft;
-  }
-
-  @override
-  void dispose() { _ticker?.cancel(); super.dispose(); }
-
-  String get _timeStr {
-    final m = _secsLeft ~/ 60;
-    final s = _secsLeft % 60;
-    return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
-  }
-
-  String get _phaseLabel {
-    switch (widget.pom.mode) {
-      case PomMode.focus:      return '🍅 专注中';
-      case PomMode.shortBreak: return '☕ 短休息';
-      case PomMode.longBreak:  return '🛋 长休息';
-    }
-  }
-
-  Color get _accentColor {
-    final tc = widget.tc;
-    return widget.pom.mode == PomMode.focus
-        ? Color(tc.acc)
-        : Color(tc.acc2);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tc = widget.tc;
-    final accent = _accentColor;
-    final progress = widget.pom.progress;
-    final isFocus = widget.pom.mode == PomMode.focus;
-
-    // 任务名（从 AppState 查）
-    final taskId = widget.pom.selTaskId;
-    final String? taskName = taskId != null
-        ? context.read<AppState>().tasks
-            .where((t) => t.id == taskId)
-            .map((t) => t.text)
-            .firstOrNull
-        : null;
-    final hasTask = taskName != null && taskName.isNotEmpty;
-
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 2),
-        height: 48,
-        decoration: BoxDecoration(
-          color: Color(tc.nb),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: accent.withOpacity(0.35), width: 1.2),
-          boxShadow: [BoxShadow(
-            color: accent.withOpacity(0.20),
-            blurRadius: 10, offset: const Offset(0, 3))],
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Row(children: [
-          // 进度条（左侧竖条）
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.linear,
-            width: 4,
-            height: 48,
-            color: accent,
-          ),
-          const SizedBox(width: 10),
-          // 状态图标
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: accent.withOpacity(0.12)),
-            child: Icon(
-              isFocus ? Icons.timer_rounded : Icons.coffee_rounded,
-              size: 16, color: accent),
-          ),
-          const SizedBox(width: 8),
-          // 主信息列
-          Expanded(child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Text(_phaseLabel.replaceAll(RegExp(r'^[^ ]+ '), ''),
-                  style: TextStyle(fontSize: 10,
-                    color: Color(tc.ts), fontWeight: FontWeight.w500)),
-                if (hasTask) ...[
-                  Text(' · ', style: TextStyle(fontSize: 9, color: Color(tc.tm))),
-                  Flexible(child: Text(
-                    taskName.length > 12 ? '${taskName.substring(0,12)}…' : taskName,
-                    style: TextStyle(fontSize: 10, color: Color(tc.ts)),
-                    overflow: TextOverflow.ellipsis)),
-                ],
-              ]),
-              // 进度条（横向）
-              const SizedBox(height: 3),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Color(tc.brd),
-                  color: accent,
-                  minHeight: 3)),
-            ],
-          )),
-          const SizedBox(width: 8),
-          // 时间
-          Text(_timeStr, style: TextStyle(
-            fontSize: 17, fontWeight: FontWeight.w800,
-            color: Color(tc.tx),
-            fontFeatures: const [FontFeature.tabularFigures()])),
-          const SizedBox(width: 10),
-          Icon(Icons.keyboard_arrow_right_rounded, size: 18,
-              color: Color(tc.tm)),
-          const SizedBox(width: 8),
-        ]),
-      ),
-    );
-  }
-}
-
-// ── Tab body: IndexedStack + fade so widgets are NEVER destroyed ──────────────
-// Using AnimatedSwitcher with KeyedSubtree was destroying PomodoroScreen on
-// every tab switch, causing its AnimationControllers and onPomPhaseDone
-// callback to be disposed mid-session → crash when the timer fired.
-// IndexedStack keeps all screens mounted; only their opacity/offstage changes.
-class _TabBody extends StatefulWidget {
-  final int index;
-  final int prevIndex;
-  final List<Widget> children;
-  const _TabBody({required this.index, required this.prevIndex,
-      required this.children});
-  @override
-  State<_TabBody> createState() => _TabBodyState();
-}
-
-class _TabBodyState extends State<_TabBody> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _fade;
-  int _displayIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _displayIndex = widget.index;
-    _ctrl = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 180));
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    _ctrl.value = 1.0;
-  }
-
-  @override
-  void didUpdateWidget(_TabBody old) {
-    super.didUpdateWidget(old);
-    if (widget.index != old.index) {
-      _ctrl.reverse().then((_) {
-        if (mounted) setState(() => _displayIndex = widget.index);
-        _ctrl.forward();
-      });
-    }
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: IndexedStack(
-        index: _displayIndex,
-        children: widget.children,
       ),
     );
   }

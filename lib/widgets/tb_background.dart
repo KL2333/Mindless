@@ -31,7 +31,7 @@ class _TBBackgroundPainter extends CustomPainter {
   _TBBackgroundPainter({
     required this.color,
     this.seed = 0,
-    this.microbeCount = 80,
+    this.microbeCount = 36,
   }) {
     _microbes = _generateMicrobes();
   }

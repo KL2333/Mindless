@@ -105,6 +105,13 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _push(context, const _GeneralAppPage()),
               ),
               _NavTile(
+                icon: Icons.edit_note_rounded,
+                title: '自定义文案',
+                subtitle: '修改“关于”页的展示文字',
+                tc: tc,
+                onTap: () => _push(context, const _AboutCustomizationPage()),
+              ),
+              _NavTile(
                 icon: Icons.storage_rounded,
                 title: L.dataSafety,
                 subtitle: L.dataSafetySubtitle,
@@ -929,6 +936,14 @@ class _PomPage extends StatelessWidget {
                   state.updatePomSettings(alarmVibrate: v);
                 }),
                 _DescText(L.vibrateReminderDesc, tc),
+                if (p.alarmVibrate) ...[
+                  const SizedBox(height: 12),
+                  _SwitchRow(L.persistentVibrate, p.persistentVibrate, tc, (v) {
+                    setSt3(() {});
+                    state.updatePomSettings(persistentVibrate: v);
+                  }),
+                  _DescText(L.persistentVibrateDesc, tc),
+                ],
               ]);
             })),
 
@@ -1831,6 +1846,114 @@ class _StatsViewPage extends StatelessWidget {
 }
 
 // ── 通用设置 ────────────────────────────────────────────────────────────────
+class _AboutCustomizationPage extends StatefulWidget {
+  const _AboutCustomizationPage();
+  @override State<_AboutCustomizationPage> createState() => _AboutCustomizationPageState();
+}
+
+class _AboutCustomizationPageState extends State<_AboutCustomizationPage> {
+  late TextEditingController _shortCtrl, _footerCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = context.read<AppState>().settings;
+    _shortCtrl = TextEditingController(text: s.aboutShortText);
+    _footerCtrl = TextEditingController(text: s.aboutFooterText);
+  }
+
+  @override
+  void dispose() {
+    _shortCtrl.dispose(); _footerCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final tc = state.themeConfig;
+    final acc = Color(tc.acc);
+
+    return _SubPage(
+      title: '自定义关于文案',
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: settingsCardFill(context), borderRadius: BorderRadius.circular(14)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.format_quote_rounded, size: 18, color: acc),
+                const SizedBox(width: 8),
+                const Text('短文案', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 4),
+              Text('显示在关于页版本号下方', style: TextStyle(fontSize: 11, color: Color(tc.ts))),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _shortCtrl,
+                style: TextStyle(fontSize: 13, color: Color(tc.tx)),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: '例如：流水不争先...',
+                  filled: true, fillColor: Color(tc.bg).withOpacity(0.5),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+                onChanged: (v) => state.setAboutShortText(v),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  _shortCtrl.text = '流水不争先，争的是滔滔不绝';
+                  state.setAboutShortText(_shortCtrl.text);
+                },
+                child: Text('恢复默认', style: TextStyle(fontSize: 11, color: acc)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: settingsCardFill(context), borderRadius: BorderRadius.circular(14)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.south_rounded, size: 18, color: acc),
+                const SizedBox(width: 8),
+                const Text('页脚文案', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 4),
+              Text('显示在关于页最底部', style: TextStyle(fontSize: 11, color: Color(tc.ts))),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _footerCtrl,
+                style: TextStyle(fontSize: 13, color: Color(tc.tx)),
+                decoration: InputDecoration(
+                  hintText: '例如：无脑 无用',
+                  filled: true, fillColor: Color(tc.bg).withOpacity(0.5),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+                onChanged: (v) => state.setAboutFooterText(v),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  _footerCtrl.text = '无脑 无用';
+                  state.setAboutFooterText(_footerCtrl.text);
+                },
+                child: Text('恢复默认', style: TextStyle(fontSize: 11, color: acc)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 24),
+          Text('💡 提示：本app的主旨是让看似无用的功能通过无脑的使用，最后汇聚成有意义的记录。',
+            style: TextStyle(fontSize: 11, color: Color(tc.tm), height: 1.5)),
+        ],
+      ),
+    );
+  }
+}
+
 class _GeneralAppPage extends StatelessWidget {
   const _GeneralAppPage();
 
@@ -3278,21 +3401,25 @@ class _AboutScreen extends StatelessWidget {
     final tc = state.themeConfig;
     final appName = state.settings.appName.trim();
     final showName = appName.isEmpty || appName == '流水账' || appName == 'Liushuizhang'
-        ? L.get('screens.settings.defaultAppName')
+        ? L.get('settings.defaultAppName')
         : appName;
     return Scaffold(
       backgroundColor:
           state.showsGlobalWallpaper ? Colors.transparent : Color(tc.bg),
       appBar: AppBar(
         backgroundColor: state.chromeBarColor(tc), elevation: 0,
-        title: Text(L.aboutApp, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(tc.tx))),
+        title: Text(L.get('settings.aboutApp'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(tc.tx))),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_rounded, size: 18, color: Color(tc.ts)),
           onPressed: () => Navigator.pop(context))),
       body: ListView(padding: const EdgeInsets.all(24), children: [
         Center(child: Column(children: [
-          ClipRRect(borderRadius: BorderRadius.circular(22),
-            child: Image.asset('assets/about_icon.png', width: 80, height: 80, fit: BoxFit.cover)),
+          Hero(tag: 'app_icon',
+            child: Container(width: 80, height: 80,
+              decoration: BoxDecoration(
+                color: Color(tc.acc), borderRadius: BorderRadius.circular(22),
+                boxShadow: [BoxShadow(color: Color(tc.acc).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))]),
+              child: const Center(child: Text('🌊', style: TextStyle(fontSize: 44))))),
           const SizedBox(height: 16),
           Text(showName, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700,
             color: Color(tc.tx), fontFamily: 'serif')),
@@ -3304,10 +3431,10 @@ class _AboutScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: Color(tc.acc).withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-              child: Text('γ', style: TextStyle(fontSize: 11, color: Color(tc.acc), fontWeight: FontWeight.w800))),
+              child: Text('γ.001', style: TextStyle(fontSize: 11, color: Color(tc.acc), fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 4),
-          Text(L.get('screens.about.subtitle'), style: TextStyle(fontSize: 12, color: Color(tc.tm))),
+          Text(state.settings.aboutShortText, style: TextStyle(fontSize: 12, color: Color(tc.tm))),
         ])),
         const SizedBox(height: 32),
 
@@ -3373,7 +3500,7 @@ class _AboutScreen extends StatelessWidget {
           Text('𝒜𝓇𝒾𝓈𝑜',
             style: TextStyle(fontSize: 28, color: Color(tc.acc), fontFamily: 'serif')),
           const SizedBox(height: 6),
-          Text(L.get('screens.about.footerLabel'), style: TextStyle(fontSize: 12, color: Color(tc.ts))),
+          Text(state.settings.aboutFooterText, style: TextStyle(fontSize: 12, color: Color(tc.ts))),
           Text('Mindless · Useless',
             style: TextStyle(fontSize: 11, color: Color(tc.tm), fontStyle: FontStyle.italic)),
         ])),
@@ -3382,6 +3509,7 @@ class _AboutScreen extends StatelessWidget {
   }
 
   static const List<(String, String, String)> _changelogMeta = [
+    ('γ.001', '2026-03', 'gamma_001'),
     ('β.0.085', '2026-03', 'beta_0_085'),
     ('β.0.084', '2026-03', 'beta_0_084'),
     ('β.0.083', '2026-03', 'beta_0_083'),
@@ -3392,10 +3520,10 @@ class _AboutScreen extends StatelessWidget {
   ];
 
   static List<(String, String, List<String>)> _getChangelog() => _changelogMeta.map((e) {
-    final items = L.get('screens.about.changelogData.${e.$3}')
-        .split('\n')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
+    final raw = L.get('screens.about.changelogData.${e.$3}');
+    final items = raw.split('\n')
+        .where((s) => s.trim().isNotEmpty)
+        .map((s) => s.replaceFirst('- ', '').trim())
         .toList();
     return (e.$1, e.$2, items);
   }).toList();

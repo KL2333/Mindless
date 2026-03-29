@@ -3,13 +3,11 @@
 // 使用 path_provider 保存临时文件，通过 Android Intent 分享
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'package:path_provider/path_provider.dart';
-import '../models/models.dart';
 import '../providers/app_state.dart';
 
 class ShareService {

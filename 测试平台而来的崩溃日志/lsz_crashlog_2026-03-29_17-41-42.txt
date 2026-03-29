@@ -1,0 +1,21 @@
+═══════════════════════════════════════════
+流水账 · Mindless  Crash / Operation Log
+Generated: 2026-03-29 17:41:42.915
+Entries: 14
+═══════════════════════════════════════════
+
+──── FULL LOG (newest last) ────
+[2026-03-29 17:41:26.788][INF][CrashLogger] Log cleared by user
+[2026-03-29 17:41:36.895][INF][CrashLogger] Logger initialized — buffer=1 entries
+[2026-03-29 17:41:36.895][ACT][App] main() — App starting
+[2026-03-29 17:41:36.931][INF][App] i18n system initialized
+[2026-03-29 17:41:36.938][INF][NotifSvc] init() ok
+[2026-03-29 17:41:36.938][INF][App] NotificationService initialized
+[2026-03-29 17:41:36.939][INF][AppState] load() start
+[2026-03-29 17:41:36.941][INF][AppState] load() ok — tasks=34 tags=8
+[2026-03-29 17:41:38.425][ACT][TAP:NavTab] tab 3 (from 0)
+[2026-03-29 17:41:38.948][WRN][NotifSvc] plugin broken, switching to native channel
+[2026-03-29 17:41:38.950][INF][NotifSvc] clearScheduledData result=true — plugin will be bypassed
+[2026-03-29 17:41:38.957][INF][NotifSvc] nativeShow(1) ok
+[2026-03-29 17:41:38.967][INF][NotifSvc] nativeShow(2) ok
+[2026-03-29 17:41:38.971][INF][NotifSvc] nativeShow(3) ok

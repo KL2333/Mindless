@@ -8,7 +8,6 @@ import '../models/models.dart'; // must be before any declarations
 
 // ── Compile-time gates (set false to dead-code-eliminate on α branch) ────────
 const bool kBetaFeatures        = true;
-const bool kFeatureLivingIsland = kBetaFeatures;
 const bool kFeatureUsageStats   = kBetaFeatures;
 const bool kFeatureTaskGravity  = kBetaFeatures;
 const bool kFeatureSmartPlan        = kBetaFeatures;
@@ -19,7 +18,6 @@ const bool kFeatureWeather          = kBetaFeatures;
 const bool kFeaturePersistNotif     = kBetaFeatures;
 
 // ── Runtime helpers ───────────────────────────────────────────────────────────
-bool betaLivingIsland(AppSettings s)      => false; // DISABLED
 bool betaUsageStats(AppSettings s)        => kFeatureUsageStats         && s.betaUsageStats;
 bool betaTaskGravity(AppSettings s)       => kFeatureTaskGravity        && s.betaTaskGravity;
 bool betaSmartPlan(AppSettings s)         => kFeatureSmartPlan          && s.betaSmartPlan;

@@ -1,6 +1,6 @@
 name: liushuizhang
 description: 流水账 - 任务管理与专注工具
-version: 1.0.0+88
+version: 1.1.1+89
 publish_to: 'none'
 
 environment:

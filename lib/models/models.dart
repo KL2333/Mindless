@@ -80,6 +80,7 @@ class SemesterInfo {
 class PomSettings {
   int focusMins, breakMins, longBreakMins, longBreakInterval;
   bool autoNext, trackTime, showProgress;
+  String disciplineMode;
   // Time ruler display settings
   bool showRuler;          // show/hide the disc ruler
   double rulerTopFrac;     // top position as fraction of screen height (0.05-0.60)
@@ -89,11 +90,13 @@ class PomSettings {
   // Alarm settings — triggered at phase end (focus→break, break→focus)
   bool alarmSound;         // play system alarm sound on phase end
   bool alarmVibrate;       // vibrate on phase end
+  bool persistentVibrate;  // keep vibrating until dismissed
 
   PomSettings({
     this.focusMins = 25, this.breakMins = 5,
     this.longBreakMins = 15, this.longBreakInterval = 4,
     this.autoNext = false, this.trackTime = true, this.showProgress = true,
+    this.disciplineMode = 'normal',
     this.showRuler = false,
     this.rulerTopFrac = 0.120,
     this.rulerHeightFrac = 0.600,
@@ -101,6 +104,7 @@ class PomSettings {
     this.rulerWidth = 34.0,
     this.alarmSound = true,
     this.alarmVibrate = true,
+    this.persistentVibrate = true,
   });
   factory PomSettings.fromJson(Map<String, dynamic> j) => PomSettings(
     focusMins: (j['focusMins'] ?? 25) as int, breakMins: (j['breakMins'] ?? 5) as int,
@@ -108,6 +112,7 @@ class PomSettings {
     longBreakInterval: (j['longBreakInterval'] ?? 4) as int,
     autoNext: (j['autoNext'] ?? false) as bool, trackTime: (j['trackTime'] ?? true) as bool,
     showProgress: (j['showProgress'] ?? true) as bool,
+    disciplineMode: (j['disciplineMode'] ?? 'normal') as String,
     showRuler: (j['showRuler'] ?? false) as bool,
     rulerTopFrac: (j['rulerTopFrac'] ?? 0.120) as double,
     rulerHeightFrac: (j['rulerHeightFrac'] ?? 0.600) as double,
@@ -115,15 +120,18 @@ class PomSettings {
     rulerWidth: (j['rulerWidth'] ?? 34.0) as double,
     alarmSound: (j['alarmSound'] ?? true) as bool,
     alarmVibrate: (j['alarmVibrate'] ?? true) as bool,
+    persistentVibrate: (j['persistentVibrate'] ?? true) as bool,
   );
   Map<String, dynamic> toJson() => {
     'focusMins': focusMins, 'breakMins': breakMins,
     'longBreakMins': longBreakMins, 'longBreakInterval': longBreakInterval,
     'autoNext': autoNext, 'trackTime': trackTime, 'showProgress': showProgress,
+    'disciplineMode': disciplineMode,
     'showRuler': showRuler,
     'rulerTopFrac': rulerTopFrac, 'rulerHeightFrac': rulerHeightFrac,
     'rulerLeft': rulerLeft, 'rulerWidth': rulerWidth,
     'alarmSound': alarmSound, 'alarmVibrate': alarmVibrate,
+    'persistentVibrate': persistentVibrate,
   };
 }
 
@@ -182,6 +190,11 @@ class AppSettings {
   List<FilterGroup> filterGroups;
   double disposableHours;
 
+  // ── About Screen Customization ──────────────────────────────────────────
+  String aboutShortText;   // "流水不争先..."
+  String aboutFooterText;  // "愿你的时间 终有回响"
+  String? currentAboutPreset; // Theme-based preset key
+
   // ── Appearance overrides ────────────────────────────────────────────────────
   int? customBgColor;      // null = use theme default; 0xFFRRGGBB override
   double globalOpacity;    // 0.5 ~ 1.0, default 1.0 (full)
@@ -193,7 +206,6 @@ class AppSettings {
   bool betaSmartPlan;
   bool betaUsageStats;
   bool betaTaskGravity;
-  bool betaLivingIsland;
   bool betaStatsNewUI;
   // New β features
   bool betaDeepFocusAnalysis; // 番茄钟深度分析
@@ -241,7 +253,6 @@ class AppSettings {
     this.betaSmartPlan = true,
     this.betaUsageStats = true,
     this.betaTaskGravity = true,
-    this.betaLivingIsland = true,
     this.betaStatsNewUI = false,
     this.betaDeepFocusAnalysis = false,
     this.betaAmbientFx = false,
@@ -263,6 +274,9 @@ class AppSettings {
     this.autoFestivalTheme = true,
     BlackHoleSettings? blackHole,
     Map<String, String>? userAppCategories,
+    this.aboutShortText = '流水不争先，争的是滔滔不绝',
+    this.aboutFooterText = '无脑 无用',
+    this.currentAboutPreset,
   }) : sems = sems ?? [], pom = pom ?? PomSettings(),
        blackHole = blackHole ?? BlackHoleSettings(),
        colorThresholds = colorThresholds ?? [3, 6, 10],
@@ -303,7 +317,6 @@ class AppSettings {
     betaSmartPlan: (j['betaSmartPlan'] ?? true) as bool,
     betaUsageStats: (j['betaUsageStats'] ?? true) as bool,
     betaTaskGravity: (j['betaTaskGravity'] ?? true) as bool,
-    betaLivingIsland: (j['betaLivingIsland'] ?? true) as bool,
     betaStatsNewUI: (j['betaStatsNewUI'] ?? false) as bool,
     betaDeepFocusAnalysis: (j['betaDeepFocusAnalysis'] ?? false) as bool,
     betaAmbientFx: (j['betaAmbientFx'] ?? false) as bool,
@@ -326,6 +339,9 @@ class AppSettings {
     blackHole: BlackHoleSettings.fromJson(j['blackHole'] as Map<String, dynamic>?),
     userAppCategories: (j['userAppCategories'] as Map<String,dynamic>? ?? {})
         .map((k, v) => MapEntry(k, v as String)),
+    aboutShortText: j['aboutShortText'] as String? ?? '流水不争先，争的是滔滔不绝',
+    aboutFooterText: j['aboutFooterText'] as String? ?? '无脑 无用',
+    currentAboutPreset: j['currentAboutPreset'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -348,7 +364,7 @@ class AppSettings {
     'topChromeOpacity': topChromeOpacity,
     'customBgImagePath': customBgImagePath,
     'betaSmartPlan': betaSmartPlan, 'betaUsageStats': betaUsageStats,
-    'betaTaskGravity': betaTaskGravity, 'betaLivingIsland': betaLivingIsland,
+    'betaTaskGravity': betaTaskGravity,
     'betaStatsNewUI': betaStatsNewUI,
     'betaDeepFocusAnalysis': betaDeepFocusAnalysis,
     'betaAmbientFx': betaAmbientFx,
@@ -370,6 +386,9 @@ class AppSettings {
     'autoFestivalTheme': autoFestivalTheme,
     'blackHole': blackHole.toJson(),
     'userAppCategories': userAppCategories,
+    'aboutShortText': aboutShortText,
+    'aboutFooterText': aboutFooterText,
+    'currentAboutPreset': currentAboutPreset,
   };
 }
 
@@ -400,6 +419,29 @@ class PomSession {
   };
 }
 enum PomMode { focus, shortBreak, longBreak }
+enum PomDisciplineMode { normal, semiStrict, strict }
+
+PomDisciplineMode pomDisciplineModeFromKey(String key) {
+  switch (key) {
+    case 'semi_strict':
+      return PomDisciplineMode.semiStrict;
+    case 'strict':
+      return PomDisciplineMode.strict;
+    default:
+      return PomDisciplineMode.normal;
+  }
+}
+
+String pomDisciplineModeKey(PomDisciplineMode mode) {
+  switch (mode) {
+    case PomDisciplineMode.semiStrict:
+      return 'semi_strict';
+    case PomDisciplineMode.strict:
+      return 'strict';
+    case PomDisciplineMode.normal:
+      return 'normal';
+  }
+}
 
 class PomState {
   PomMode mode; int secsLeft, totalSecs, cycle, focusRoundsSinceLongBreak;
