@@ -3395,6 +3395,61 @@ Widget _SwitchRow(String label, bool val, ThemeConfig tc, ValueChanged<bool> cb)
 // ─────────────────────────────────────────────────────────────────────────────
 class _AboutScreen extends StatelessWidget {
   const _AboutScreen();
+  Widget _buildThemedAppIcon(String theme, ThemeConfig tc) {
+    String emoji = '🌊';
+    switch (theme) {
+      case 'warm': emoji = '🍂'; break;
+      case 'green': emoji = '🍃'; break;
+      case 'indigo': emoji = '🌌'; break;
+      case 'sunset': emoji = '🌇'; break;
+      case 'lavender': emoji = '🔮'; break;
+      case 'cherry': emoji = '🌸'; break;
+      case 'forest': emoji = '🌲'; break;
+      case 'black_hole': emoji = '🕳️'; break;
+      case 'spring': emoji = '🌱'; break;
+      case 'summer': emoji = '☀️'; break;
+      case 'autumn': emoji = '🍁'; break;
+      case 'winter': emoji = '❄️'; break;
+      case 'world_water_day': emoji = '💧'; break;
+      case 'world_tb_day': emoji = '🏥'; break;
+      case 'lunar_new_year': emoji = '🏮'; break;
+      case 'mid_autumn': emoji = '🎑'; break;
+      case 'dragon_boat': emoji = '🛶'; break;
+    }
+
+    return Hero(
+      tag: 'app_icon_themed',
+      child: Container(
+        width: 86,
+        height: 86,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(tc.acc),
+              Color(tc.acc2).withOpacity(0.8),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Color(tc.acc).withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            emoji,
+            style: const TextStyle(fontSize: 48),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -3414,13 +3469,8 @@ class _AboutScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context))),
       body: ListView(padding: const EdgeInsets.all(24), children: [
         Center(child: Column(children: [
-          Hero(tag: 'app_icon',
-            child: Container(width: 80, height: 80,
-              decoration: BoxDecoration(
-                color: Color(tc.acc), borderRadius: BorderRadius.circular(22),
-                boxShadow: [BoxShadow(color: Color(tc.acc).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))]),
-              child: const Center(child: Text('🌊', style: TextStyle(fontSize: 44))))),
-          const SizedBox(height: 16),
+          _buildThemedAppIcon(state.settings.theme, tc),
+          const SizedBox(height: 20),
           Text(showName, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700,
             color: Color(tc.tx), fontFamily: 'serif')),
           const SizedBox(height: 6),
